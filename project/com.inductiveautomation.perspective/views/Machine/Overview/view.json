@@ -310,7 +310,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_OVERVIEW",
+                  "name": "NavOverview",
                   "tabIndex": 0
                 },
                 "props": {
@@ -357,7 +357,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_3DCELL",
+                  "name": "NavCell3d",
                   "tabIndex": 0
                 },
                 "props": {
@@ -404,7 +404,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_CAD",
+                  "name": "NavCad",
                   "tabIndex": 0
                 },
                 "props": {
@@ -451,7 +451,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_MANUAL",
+                  "name": "NavManual",
                   "tabIndex": 0
                 },
                 "props": {
@@ -498,7 +498,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_ALARMS",
+                  "name": "NavAlarms",
                   "tabIndex": 0
                 },
                 "props": {
@@ -545,7 +545,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_SETUP",
+                  "name": "NavSetup",
                   "tabIndex": 0
                 },
                 "props": {
@@ -3171,7 +3171,7 @@
                           {
                             "type": "ia.container.flex",
                             "meta": {
-                              "name": "Sh_C1"
+                              "name": "ConveyorC1"
                             },
                             "props": {
                               "direction": "row",
@@ -3278,7 +3278,7 @@
                           {
                             "type": "ia.container.flex",
                             "meta": {
-                              "name": "Belt_C1"
+                              "name": "BeltC1"
                             },
                             "props": {
                               "direction": "row",
@@ -3302,7 +3302,7 @@
                           {
                             "type": "ia.container.flex",
                             "meta": {
-                              "name": "Sh_C2"
+                              "name": "ConveyorC2"
                             },
                             "props": {
                               "direction": "row",
@@ -3409,7 +3409,7 @@
                           {
                             "type": "ia.container.flex",
                             "meta": {
-                              "name": "Belt_C2"
+                              "name": "BeltC2"
                             },
                             "props": {
                               "direction": "row",
@@ -3433,7 +3433,7 @@
                           {
                             "type": "ia.container.flex",
                             "meta": {
-                              "name": "Sh_C3"
+                              "name": "ConveyorC3"
                             },
                             "props": {
                               "direction": "row",
@@ -3540,7 +3540,7 @@
                           {
                             "type": "ia.container.flex",
                             "meta": {
-                              "name": "Belt_C3"
+                              "name": "BeltC3"
                             },
                             "props": {
                               "direction": "row",
@@ -3564,7 +3564,7 @@
                           {
                             "type": "ia.display.label",
                             "meta": {
-                              "name": "D_PE_Infeed"
+                              "name": "EyeLampInfeed"
                             },
                             "props": {
                               "text": "",
@@ -3598,7 +3598,7 @@
                           {
                             "type": "ia.container.flex",
                             "meta": {
-                              "name": "Beam_PE_Infeed",
+                              "name": "EyeBeamInfeed",
                               "tooltip": {
                                 "text": ""
                               }
@@ -3640,7 +3640,7 @@
                           {
                             "type": "ia.display.label",
                             "meta": {
-                              "name": "PL_PE_Infeed"
+                              "name": "EyeLabelInfeed"
                             },
                             "props": {
                               "text": "Infeed",
@@ -3662,7 +3662,7 @@
                           {
                             "type": "ia.display.label",
                             "meta": {
-                              "name": "D_PE_Carton"
+                              "name": "EyeLampCarton"
                             },
                             "props": {
                               "text": "",
@@ -3696,7 +3696,7 @@
                           {
                             "type": "ia.container.flex",
                             "meta": {
-                              "name": "Beam_PE_Carton",
+                              "name": "EyeBeamCarton",
                               "tooltip": {
                                 "text": ""
                               }
@@ -3738,7 +3738,7 @@
                           {
                             "type": "ia.display.label",
                             "meta": {
-                              "name": "PL_PE_Carton"
+                              "name": "EyeLabelCarton"
                             },
                             "props": {
                               "text": "Carton",
@@ -3760,7 +3760,7 @@
                           {
                             "type": "ia.display.label",
                             "meta": {
-                              "name": "D_PE_Length1"
+                              "name": "EyeLampLength1"
                             },
                             "props": {
                               "text": "",
@@ -3794,7 +3794,7 @@
                           {
                             "type": "ia.container.flex",
                             "meta": {
-                              "name": "Beam_PE_Length1",
+                              "name": "EyeBeamLength1",
                               "tooltip": {
                                 "text": ""
                               }
@@ -3836,7 +3836,7 @@
                           {
                             "type": "ia.display.label",
                             "meta": {
-                              "name": "PL_PE_Length1"
+                              "name": "EyeLabelLength1"
                             },
                             "props": {
                               "text": "Length 1",
@@ -3858,7 +3858,7 @@
                           {
                             "type": "ia.display.label",
                             "meta": {
-                              "name": "D_PE_Length2"
+                              "name": "EyeLampLength2"
                             },
                             "props": {
                               "text": "",
@@ -3892,7 +3892,7 @@
                           {
                             "type": "ia.container.flex",
                             "meta": {
-                              "name": "Beam_PE_Length2",
+                              "name": "EyeBeamLength2",
                               "tooltip": {
                                 "text": ""
                               }
@@ -3934,7 +3934,7 @@
                           {
                             "type": "ia.display.label",
                             "meta": {
-                              "name": "PL_PE_Length2"
+                              "name": "EyeLabelLength2"
                             },
                             "props": {
                               "text": "Length 2",
@@ -3956,7 +3956,7 @@
                           {
                             "type": "ia.display.label",
                             "meta": {
-                              "name": "D_PE_InPos1"
+                              "name": "EyeLampInPos1"
                             },
                             "props": {
                               "text": "",
@@ -3990,7 +3990,7 @@
                           {
                             "type": "ia.container.flex",
                             "meta": {
-                              "name": "Beam_PE_InPos1",
+                              "name": "EyeBeamInPos1",
                               "tooltip": {
                                 "text": ""
                               }
@@ -4032,7 +4032,7 @@
                           {
                             "type": "ia.display.label",
                             "meta": {
-                              "name": "PL_PE_InPos1"
+                              "name": "EyeLabelInPos1"
                             },
                             "props": {
                               "text": "In pos 1",
@@ -4054,7 +4054,7 @@
                           {
                             "type": "ia.display.label",
                             "meta": {
-                              "name": "D_PE_InPos2"
+                              "name": "EyeLampInPos2"
                             },
                             "props": {
                               "text": "",
@@ -4088,7 +4088,7 @@
                           {
                             "type": "ia.container.flex",
                             "meta": {
-                              "name": "Beam_PE_InPos2",
+                              "name": "EyeBeamInPos2",
                               "tooltip": {
                                 "text": ""
                               }
@@ -4130,7 +4130,7 @@
                           {
                             "type": "ia.display.label",
                             "meta": {
-                              "name": "PL_PE_InPos2"
+                              "name": "EyeLabelInPos2"
                             },
                             "props": {
                               "text": "In pos 2",
@@ -4152,7 +4152,7 @@
                           {
                             "type": "ia.display.label",
                             "meta": {
-                              "name": "D_PE_Clear"
+                              "name": "EyeLampClear"
                             },
                             "props": {
                               "text": "",
@@ -4186,7 +4186,7 @@
                           {
                             "type": "ia.container.flex",
                             "meta": {
-                              "name": "Beam_PE_Clear",
+                              "name": "EyeBeamClear",
                               "tooltip": {
                                 "text": ""
                               }
@@ -4228,7 +4228,7 @@
                           {
                             "type": "ia.display.label",
                             "meta": {
-                              "name": "PL_PE_Clear"
+                              "name": "EyeLabelClear"
                             },
                             "props": {
                               "text": "Clear",
@@ -4250,7 +4250,7 @@
                           {
                             "type": "ia.container.flex",
                             "meta": {
-                              "name": "G_Gate1_Up"
+                              "name": "Gate1Lamp"
                             },
                             "props": {
                               "direction": "row",
@@ -4282,7 +4282,7 @@
                           {
                             "type": "ia.display.label",
                             "meta": {
-                              "name": "GL_Gate1_Up"
+                              "name": "Gate1Label"
                             },
                             "props": {
                               "text": "",
@@ -4321,7 +4321,7 @@
                           {
                             "type": "ia.container.flex",
                             "meta": {
-                              "name": "G_Gate2_Up"
+                              "name": "Gate2Lamp"
                             },
                             "props": {
                               "direction": "row",
@@ -4353,7 +4353,7 @@
                           {
                             "type": "ia.display.label",
                             "meta": {
-                              "name": "GL_Gate2_Up"
+                              "name": "Gate2Label"
                             },
                             "props": {
                               "text": "",

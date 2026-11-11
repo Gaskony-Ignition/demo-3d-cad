@@ -199,7 +199,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_OVERVIEW",
+                  "name": "NavOverview",
                   "tabIndex": 0
                 },
                 "props": {
@@ -246,7 +246,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_3DCELL",
+                  "name": "NavCell3d",
                   "tabIndex": 0
                 },
                 "props": {
@@ -293,7 +293,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_CAD",
+                  "name": "NavCad",
                   "tabIndex": 0
                 },
                 "props": {
@@ -340,7 +340,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_MANUAL",
+                  "name": "NavManual",
                   "tabIndex": 0
                 },
                 "props": {
@@ -387,7 +387,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_ALARMS",
+                  "name": "NavAlarms",
                   "tabIndex": 0
                 },
                 "props": {
@@ -434,7 +434,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_SETUP",
+                  "name": "NavSetup",
                   "tabIndex": 0
                 },
                 "props": {
@@ -2727,7 +2727,7 @@
                             "type": "ia.input.button",
                             "version": 0,
                             "meta": {
-                              "name": "T_dark"
+                              "name": "ThemeDark"
                             },
                             "position": {
                               "grow": 1,
@@ -2766,7 +2766,7 @@
                             "type": "ia.input.button",
                             "version": 0,
                             "meta": {
-                              "name": "T_dark_cool"
+                              "name": "ThemeDarkCool"
                             },
                             "position": {
                               "grow": 1,
@@ -2805,7 +2805,7 @@
                             "type": "ia.input.button",
                             "version": 0,
                             "meta": {
-                              "name": "T_dark_warm"
+                              "name": "ThemeDarkWarm"
                             },
                             "position": {
                               "grow": 1,
@@ -2867,7 +2867,7 @@
                             "type": "ia.input.button",
                             "version": 0,
                             "meta": {
-                              "name": "T_light"
+                              "name": "ThemeLight"
                             },
                             "position": {
                               "grow": 1,
@@ -2906,7 +2906,7 @@
                             "type": "ia.input.button",
                             "version": 0,
                             "meta": {
-                              "name": "T_light_cool"
+                              "name": "ThemeLightCool"
                             },
                             "position": {
                               "grow": 1,
@@ -2945,7 +2945,7 @@
                             "type": "ia.input.button",
                             "version": 0,
                             "meta": {
-                              "name": "T_light_warm"
+                              "name": "ThemeLightWarm"
                             },
                             "position": {
                               "grow": 1,
@@ -3881,7 +3881,7 @@
                       {
                         "type": "ia.container.flex",
                         "meta": {
-                          "name": "F_WrapperFilmFeed"
+                          "name": "FaultWrapperFilmFeed"
                         },
                         "props": {
                           "direction": "row",
@@ -4174,7 +4174,7 @@
                       {
                         "type": "ia.container.flex",
                         "meta": {
-                          "name": "F_ConveyorJam"
+                          "name": "FaultConveyorJam"
                         },
                         "props": {
                           "direction": "row",
@@ -4467,7 +4467,7 @@
                       {
                         "type": "ia.container.flex",
                         "meta": {
-                          "name": "F_VacuumLow"
+                          "name": "FaultVacuumLow"
                         },
                         "props": {
                           "direction": "row",
@@ -4760,7 +4760,7 @@
                       {
                         "type": "ia.container.flex",
                         "meta": {
-                          "name": "F_GuardOpen"
+                          "name": "FaultGuardOpen"
                         },
                         "props": {
                           "direction": "row",
@@ -5053,7 +5053,7 @@
                       {
                         "type": "ia.container.flex",
                         "meta": {
-                          "name": "F_RobotAxisFault"
+                          "name": "FaultRobotAxisFault"
                         },
                         "props": {
                           "direction": "row",

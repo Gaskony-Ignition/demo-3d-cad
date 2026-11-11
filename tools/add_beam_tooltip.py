@@ -24,13 +24,13 @@ VIEW_FILE = os.path.join(VIEW_DIR, "view.json")
 # component name -> plain caption, matching the *-pe-cap label already next
 # to each beam on the diagram.
 CAPTION = {
-    "Beam_PE_Infeed": "Infeed",
-    "Beam_PE_Carton": "Carton",
-    "Beam_PE_Length1": "Length 1",
-    "Beam_PE_Length2": "Length 2",
-    "Beam_PE_InPos1": "In pos 1",
-    "Beam_PE_InPos2": "In pos 2",
-    "Beam_PE_Clear": "Clear",
+    "EyeBeamInfeed": "Infeed",
+    "EyeBeamCarton": "Carton",
+    "EyeBeamLength1": "Length 1",
+    "EyeBeamLength2": "Length 2",
+    "EyeBeamInPos1": "In pos 1",
+    "EyeBeamInPos2": "In pos 2",
+    "EyeBeamClear": "Clear",
 }
 
 TAG_RE = re.compile(r"\{(\[MachineDemo\][^}]+)\}")

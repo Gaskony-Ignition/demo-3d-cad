@@ -81,8 +81,8 @@ if header_slot is None:
 header_slot.pop("propConfig", None)
 
 drop(header_slot, "GeomToggle")
-find(header_slot, "t1")["props"]["text"] = TITLE
-find(header_slot, "t2")["props"]["text"] = SUBTITLE
+find(header_slot, "Heading")["props"]["text"] = TITLE
+find(header_slot, "Subheading")["props"]["text"] = SUBTITLE
 # RobotState reads the cell's own tags; a CAD model has none.
 drop(header_slot, "RobotState")
 

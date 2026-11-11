@@ -186,7 +186,7 @@ sensors = find(root, "Sensors")
 
 # Conveyor headers: a 6px box holding 14px of text.
 for n in (1, 2, 3):
-    head = find(sensors, "Sh_C%d" % n)
+    head = find(sensors, "ConveyorC%d" % n)
     place(head, y=0.02, height=0.17)
     # At 1024 the third name needs 154px and has 121. Shed the tail rather
     # than run it under the speed readout - the dot and the number are the
@@ -200,9 +200,9 @@ for n in (1, 2, 3):
 # ("Length 1", 37px) at 1024 with room to spare.
 PE = ("Infeed", "Carton", "Length1", "Length2", "InPos1", "InPos2", "Clear")
 for name in PE:
-    dot = find(sensors, "D_PE_%s" % name)
+    dot = find(sensors, "EyeLamp%s" % name)
     centre = dot["position"]["x"] + dot["position"]["width"] / 2.0
-    caption = find(sensors, "PL_PE_%s" % name)
+    caption = find(sensors, "EyeLabel%s" % name)
     place(caption, x=round(centre - 0.064 / 2.0, 5), y=0.635,
           width=0.064, height=0.155)
     ellipsise(caption, "pe-cap")
@@ -210,7 +210,7 @@ for name in PE:
 # The gate and clamp captions get their own row, and enough width for their
 # longest text at 1024 - "GATE 1 DOWN" needs 61px there and had 50. Re-centred
 # on the gate they belong to, since they are wider than they were.
-for label, gate in (("GL_Gate1_Up", "G_Gate1_Up"), ("GL_Gate2_Up", "G_Gate2_Up")):
+for label, gate in (("Gate1Label", "Gate1Lamp"), ("Gate2Label", "Gate2Lamp")):
     g = find(sensors, gate)
     centre = g["position"]["x"] + g["position"]["width"] / 2.0
     place(find(sensors, label),

@@ -370,7 +370,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_OVERVIEW",
+                  "name": "NavOverview",
                   "tabIndex": 0
                 },
                 "props": {
@@ -417,7 +417,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_3DCELL",
+                  "name": "NavCell3d",
                   "tabIndex": 0
                 },
                 "props": {
@@ -464,7 +464,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_CAD",
+                  "name": "NavCad",
                   "tabIndex": 0
                 },
                 "props": {
@@ -511,7 +511,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_MANUAL",
+                  "name": "NavManual",
                   "tabIndex": 0
                 },
                 "props": {
@@ -558,7 +558,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_ALARMS",
+                  "name": "NavAlarms",
                   "tabIndex": 0
                 },
                 "props": {
@@ -605,7 +605,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_SETUP",
+                  "name": "NavSetup",
                   "tabIndex": 0
                 },
                 "props": {
@@ -8740,7 +8740,7 @@
                       {
                         "type": "ia.container.flex",
                         "meta": {
-                          "name": "X_PE_Infeed"
+                          "name": "EyeInfeed"
                         },
                         "props": {
                           "direction": "row",
@@ -8818,7 +8818,7 @@
                       {
                         "type": "ia.container.flex",
                         "meta": {
-                          "name": "X_PE_InPos1"
+                          "name": "EyeInPos1"
                         },
                         "props": {
                           "direction": "row",
@@ -8896,7 +8896,7 @@
                       {
                         "type": "ia.container.flex",
                         "meta": {
-                          "name": "X_PE_InPos2"
+                          "name": "EyeInPos2"
                         },
                         "props": {
                           "direction": "row",
@@ -8974,7 +8974,7 @@
                       {
                         "type": "ia.container.flex",
                         "meta": {
-                          "name": "X_Clamp_Extended"
+                          "name": "ClampExtended"
                         },
                         "props": {
                           "direction": "row",

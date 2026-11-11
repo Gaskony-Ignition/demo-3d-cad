@@ -164,7 +164,7 @@ def button(value, label):
     return {
         "type": "ia.input.button",
         "version": 0,
-        "meta": {"name": "T_" + value.replace("-", "_")},
+        "meta": {"name": "Theme" + "".join(w.capitalize() for w in value.split("-"))},
         "position": {"grow": 1, "shrink": 1, "basis": "0px"},
         "props": {
             "text": label,

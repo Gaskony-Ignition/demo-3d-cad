@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Keep the nav bar in step across every view that carries one.
 
-Idempotent: run it twice and nothing changes. Each tab is cloned from N_OVERVIEW
+Idempotent: run it twice and nothing changes. Each tab is cloned from NavOverview
 in the SAME view rather than written from scratch, so it inherits that view's
 styling and - more importantly - the exact event shape. A nav action with a
 missing "scope" key returns HTTP 500 on EVERY page of the project while the scan
@@ -28,20 +28,20 @@ VIEWS = os.path.join(HERE, os.pardir, "project",
 # replaces the whole Nav container, so an old tab does not linger in a view
 # nobody thought to open.
 TABS = [
-    ("N_OVERVIEW", "OVERVIEW", "/"),
-    ("N_3DCELL",   "3D CELL",  "/cell3d"),
-    ("N_CAD",      "CAD",      "/cad"),
-    ("N_MANUAL",   "MANUAL",   "/manual"),
-    ("N_ALARMS",   "ALARMS",   "/alarms"),
-    ("N_SETUP",    "SETUP",    "/setup"),
+    ("NavOverview", "OVERVIEW", "/"),
+    ("NavCell3d",   "3D CELL",  "/cell3d"),
+    ("NavCad",      "CAD",      "/cad"),
+    ("NavManual",   "MANUAL",   "/manual"),
+    ("NavAlarms",   "ALARMS",   "/alarms"),
+    ("NavSetup",    "SETUP",    "/setup"),
 ]
 
 # Which tab each view lights up. A view not listed here lights up nothing.
 ACTIVE_TAB = {
-    "Overview": "N_OVERVIEW",
-    "Manual": "N_MANUAL",
-    "Alarms": "N_ALARMS",
-    "Setup": "N_SETUP",
+    "Overview": "NavOverview",
+    "Manual": "NavManual",
+    "Alarms": "NavAlarms",
+    "Setup": "NavSetup",
 }
 
 ACTIVE = {"backgroundColor": "var(--md-info-bg, #152f3b)",
@@ -111,9 +111,9 @@ for name in sorted(os.listdir(VIEWS)):
         print("%-10s no nav bar - skipped" % name)
         continue
 
-    template = find(nav, "N_OVERVIEW")
+    template = find(nav, "NavOverview")
     if template is None:
-        raise SystemExit("%s has a nav but no N_OVERVIEW to clone" % name)
+        raise SystemExit("%s has a nav but no NavOverview to clone" % name)
     template = copy.deepcopy(template)
     active = ACTIVE_TAB.get(name)
 

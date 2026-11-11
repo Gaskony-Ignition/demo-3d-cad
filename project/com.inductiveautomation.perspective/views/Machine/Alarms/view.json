@@ -311,7 +311,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_OVERVIEW",
+                  "name": "NavOverview",
                   "tabIndex": 0
                 },
                 "props": {
@@ -358,7 +358,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_3DCELL",
+                  "name": "NavCell3d",
                   "tabIndex": 0
                 },
                 "props": {
@@ -405,7 +405,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_CAD",
+                  "name": "NavCad",
                   "tabIndex": 0
                 },
                 "props": {
@@ -452,7 +452,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_MANUAL",
+                  "name": "NavManual",
                   "tabIndex": 0
                 },
                 "props": {
@@ -499,7 +499,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_ALARMS",
+                  "name": "NavAlarms",
                   "tabIndex": 0
                 },
                 "props": {
@@ -546,7 +546,7 @@
               {
                 "type": "ia.display.label",
                 "meta": {
-                  "name": "N_SETUP",
+                  "name": "NavSetup",
                   "tabIndex": 0
                 },
                 "props": {

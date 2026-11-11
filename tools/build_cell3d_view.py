@@ -91,7 +91,7 @@ def bind(node, prop_path, expression):
 
 
 # --- header (kept byte-for-byte identical to what CadModel expects to find) -
-# t1/t2 text, the RobotState badge and the Overview button are unchanged from
+# Heading/Subheading text, the RobotState badge and the Overview button are unchanged from
 # before params existed - tools/build_cad_view.py's find() calls still land on
 # the same names, and the copied node still carries the Overview button's own
 # event config (the one place a missing "scope" key would 500 the project).
@@ -118,7 +118,7 @@ header = {
             "children": [
                 {
                     "type": "ia.display.label",
-                    "meta": {"name": "t1"},
+                    "meta": {"name": "Heading"},
                     "props": {
                         "text": "Zone 2 · Robot Cell 2 — Live 3D",
                         "style": {
@@ -131,7 +131,7 @@ header = {
                 },
                 {
                     "type": "ia.display.label",
-                    "meta": {"name": "t2"},
+                    "meta": {"name": "Subheading"},
                     "props": {
                         "text": "Built from the parts list in Machine/Scene\u2019s custom props, driven by the same [MachineDemo] tags as every other screen",
                         "style": {
@@ -339,7 +339,7 @@ def field(tag, caption):
     name = tag.replace("_mm", "")
     return {
         "type": "ia.container.flex", "version": 0,
-        "meta": {"name": "F_" + name},
+        "meta": {"name": "Field" + name.replace("_", "")},
         "position": {"grow": 1, "shrink": 1, "basis": "0px"},
         "props": {"direction": "column", "style": {"gap": "2px", "minWidth": "0px"}},
         "children": [
@@ -365,7 +365,7 @@ def field(tag, caption):
 def group(title, fields):
     return {
         "type": "ia.container.flex", "version": 0,
-        "meta": {"name": "G_" + title.split(" ")[0].replace("(", "")},
+        "meta": {"name": "Group" + title.split(" ")[0].replace("(", "")},
         "position": {"grow": 0, "shrink": 0, "basis": "auto"},
         "props": {"direction": "column", "style": {"gap": "3px"}},
         "children": [
@@ -385,7 +385,7 @@ def group(title, fields):
 def preset(key, text):
     return {
         "type": "ia.input.button", "version": 0,
-        "meta": {"name": "P_" + key.replace("-", "_")},
+        "meta": {"name": "Preset" + "".join(w.capitalize() for w in key.split("-"))},
         "position": {"grow": 1, "shrink": 1, "basis": "0px"},
         "props": {
             "text": text,
