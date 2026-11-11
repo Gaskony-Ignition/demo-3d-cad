@@ -274,7 +274,7 @@
                     "border": "1px solid currentColor",
                     "whiteSpace": "nowrap",
                     "textAlign": "center",
-                    "backgroundColor": "rgba(255,255,255,0.06)",
+                    "backgroundColor": "var(--mc-chip-tint)",
                     "classes": "hdr-chip"
                   }
                 },
@@ -316,7 +316,7 @@
                     "border": "1px solid currentColor",
                     "whiteSpace": "nowrap",
                     "textAlign": "center",
-                    "backgroundColor": "rgba(255,255,255,0.06)",
+                    "backgroundColor": "var(--mc-chip-tint)",
                     "classes": "hdr-chip"
                   }
                 },
@@ -1207,7 +1207,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -1285,7 +1285,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -1363,7 +1363,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -1472,7 +1472,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -1550,7 +1550,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -1628,7 +1628,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -1706,7 +1706,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -1784,7 +1784,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -1893,7 +1893,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -2002,7 +2002,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -2719,7 +2719,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -2797,7 +2797,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -2875,7 +2875,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -2953,7 +2953,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -3031,7 +3031,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -8043,7 +8043,7 @@
                                     "minHeight": "11px",
                                     "borderRadius": "50%",
                                     "backgroundColor": "var(--neutral-40, #3a434b)",
-                                    "border": "1px solid rgba(0,0,0,0.35)"
+                                    "border": "1px solid var(--mc-lamp-rim)"
                                   }
                                 },
                                 "position": {
@@ -8325,7 +8325,7 @@
                                     "minHeight": "11px",
                                     "borderRadius": "50%",
                                     "backgroundColor": "var(--neutral-40, #3a434b)",
-                                    "border": "1px solid rgba(0,0,0,0.35)"
+                                    "border": "1px solid var(--mc-lamp-rim)"
                                   }
                                 },
                                 "position": {
@@ -8585,7 +8585,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -8663,7 +8663,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -8772,7 +8772,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -8850,7 +8850,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -8928,7 +8928,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -9006,7 +9006,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -9113,7 +9113,7 @@
                 "minHeight": "12px",
                 "borderRadius": "50%",
                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                "border": "1px solid rgba(0,0,0,0.35)"
+                "border": "1px solid var(--mc-lamp-rim)"
               }
             },
             "position": {

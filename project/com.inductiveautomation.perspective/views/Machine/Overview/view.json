@@ -174,7 +174,7 @@
                     "border": "1px solid currentColor",
                     "whiteSpace": "nowrap",
                     "textAlign": "center",
-                    "backgroundColor": "rgba(255,255,255,0.06)",
+                    "backgroundColor": "var(--mc-chip-tint)",
                     "classes": "hdr-chip"
                   }
                 },
@@ -1106,7 +1106,7 @@
                                   "style": {
                                     "backgroundColor": "var(--neutral-30, #262e36)",
                                     "borderRadius": "2px",
-                                    "border": "1px solid rgba(255,255,255,0.05)",
+                                    "border": "1px solid var(--mc-mimic-edge)",
                                     "minWidth": "0px",
                                     "minHeight": "0px"
                                   }
@@ -1139,7 +1139,7 @@
                                   "style": {
                                     "backgroundColor": "var(--neutral-30, #262e36)",
                                     "borderRadius": "2px",
-                                    "border": "1px solid rgba(255,255,255,0.05)",
+                                    "border": "1px solid var(--mc-mimic-edge)",
                                     "minWidth": "0px",
                                     "minHeight": "0px"
                                   }
@@ -1172,7 +1172,7 @@
                                   "style": {
                                     "backgroundColor": "var(--neutral-30, #262e36)",
                                     "borderRadius": "2px",
-                                    "border": "1px solid rgba(255,255,255,0.05)",
+                                    "border": "1px solid var(--mc-mimic-edge)",
                                     "minWidth": "0px",
                                     "minHeight": "0px"
                                   }
@@ -1205,7 +1205,7 @@
                                   "style": {
                                     "backgroundColor": "var(--neutral-30, #262e36)",
                                     "borderRadius": "2px",
-                                    "border": "1px solid rgba(255,255,255,0.05)",
+                                    "border": "1px solid var(--mc-mimic-edge)",
                                     "minWidth": "0px",
                                     "minHeight": "0px"
                                   }
@@ -1238,7 +1238,7 @@
                                   "style": {
                                     "backgroundColor": "var(--neutral-30, #262e36)",
                                     "borderRadius": "2px",
-                                    "border": "1px solid rgba(255,255,255,0.05)",
+                                    "border": "1px solid var(--mc-mimic-edge)",
                                     "minWidth": "0px",
                                     "minHeight": "0px"
                                   }
@@ -1497,7 +1497,7 @@
                                   "style": {
                                     "backgroundColor": "var(--neutral-30, #262e36)",
                                     "borderRadius": "2px",
-                                    "border": "1px solid rgba(255,255,255,0.05)",
+                                    "border": "1px solid var(--mc-mimic-edge)",
                                     "minWidth": "0px",
                                     "minHeight": "0px"
                                   }
@@ -1530,7 +1530,7 @@
                                   "style": {
                                     "backgroundColor": "var(--neutral-30, #262e36)",
                                     "borderRadius": "2px",
-                                    "border": "1px solid rgba(255,255,255,0.05)",
+                                    "border": "1px solid var(--mc-mimic-edge)",
                                     "minWidth": "0px",
                                     "minHeight": "0px"
                                   }
@@ -1563,7 +1563,7 @@
                                   "style": {
                                     "backgroundColor": "var(--neutral-30, #262e36)",
                                     "borderRadius": "2px",
-                                    "border": "1px solid rgba(255,255,255,0.05)",
+                                    "border": "1px solid var(--mc-mimic-edge)",
                                     "minWidth": "0px",
                                     "minHeight": "0px"
                                   }
@@ -1596,7 +1596,7 @@
                                   "style": {
                                     "backgroundColor": "var(--neutral-30, #262e36)",
                                     "borderRadius": "2px",
-                                    "border": "1px solid rgba(255,255,255,0.05)",
+                                    "border": "1px solid var(--mc-mimic-edge)",
                                     "minWidth": "0px",
                                     "minHeight": "0px"
                                   }
@@ -1629,7 +1629,7 @@
                                   "style": {
                                     "backgroundColor": "var(--neutral-30, #262e36)",
                                     "borderRadius": "2px",
-                                    "border": "1px solid rgba(255,255,255,0.05)",
+                                    "border": "1px solid var(--mc-mimic-edge)",
                                     "minWidth": "0px",
                                     "minHeight": "0px"
                                   }
@@ -1946,7 +1946,7 @@
                                     "minHeight": "9px",
                                     "borderRadius": "50%",
                                     "backgroundColor": "var(--neutral-40, #3a434b)",
-                                    "border": "1px solid rgba(0,0,0,0.35)"
+                                    "border": "1px solid var(--mc-lamp-rim)"
                                   }
                                 },
                                 "position": {
@@ -2173,7 +2173,7 @@
                                     "minHeight": "9px",
                                     "borderRadius": "50%",
                                     "backgroundColor": "var(--neutral-40, #3a434b)",
-                                    "border": "1px solid rgba(0,0,0,0.35)"
+                                    "border": "1px solid var(--mc-lamp-rim)"
                                   }
                                 },
                                 "position": {
@@ -2439,7 +2439,7 @@
                                     "minHeight": "9px",
                                     "borderRadius": "50%",
                                     "backgroundColor": "var(--neutral-40, #3a434b)",
-                                    "border": "1px solid rgba(0,0,0,0.35)"
+                                    "border": "1px solid var(--mc-lamp-rim)"
                                   }
                                 },
                                 "position": {
@@ -2510,7 +2510,7 @@
                                     "minHeight": "9px",
                                     "borderRadius": "50%",
                                     "backgroundColor": "var(--neutral-40, #3a434b)",
-                                    "border": "1px solid rgba(0,0,0,0.35)"
+                                    "border": "1px solid var(--mc-lamp-rim)"
                                   }
                                 },
                                 "position": {
@@ -2786,7 +2786,7 @@
                                 "minHeight": "9px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -2841,7 +2841,7 @@
                                 "minHeight": "9px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -2896,7 +2896,7 @@
                                 "minHeight": "9px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -2951,7 +2951,7 @@
                                 "minHeight": "9px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -3203,7 +3203,7 @@
                                     "minHeight": "9px",
                                     "borderRadius": "50%",
                                     "backgroundColor": "var(--neutral-40, #3a434b)",
-                                    "border": "1px solid rgba(0,0,0,0.35)"
+                                    "border": "1px solid var(--mc-lamp-rim)"
                                   }
                                 },
                                 "position": {
@@ -3334,7 +3334,7 @@
                                     "minHeight": "9px",
                                     "borderRadius": "50%",
                                     "backgroundColor": "var(--neutral-40, #3a434b)",
-                                    "border": "1px solid rgba(0,0,0,0.35)"
+                                    "border": "1px solid var(--mc-lamp-rim)"
                                   }
                                 },
                                 "position": {
@@ -3465,7 +3465,7 @@
                                     "minHeight": "9px",
                                     "borderRadius": "50%",
                                     "backgroundColor": "var(--neutral-40, #3a434b)",
-                                    "border": "1px solid rgba(0,0,0,0.35)"
+                                    "border": "1px solid var(--mc-lamp-rim)"
                                   }
                                 },
                                 "position": {
@@ -3575,7 +3575,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -3673,7 +3673,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -3771,7 +3771,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -3869,7 +3869,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -3967,7 +3967,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -4065,7 +4065,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -4163,7 +4163,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -4527,7 +4527,7 @@
                                     "minHeight": "10px",
                                     "borderRadius": "50%",
                                     "backgroundColor": "var(--neutral-40, #3a434b)",
-                                    "border": "1px solid rgba(0,0,0,0.35)"
+                                    "border": "1px solid var(--mc-lamp-rim)"
                                   }
                                 },
                                 "position": {
@@ -5002,7 +5002,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -5292,7 +5292,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -5582,7 +5582,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -5872,7 +5872,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -6162,7 +6162,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -6452,7 +6452,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -6742,7 +6742,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
@@ -7032,7 +7032,7 @@
                                 "minHeight": "11px",
                                 "borderRadius": "50%",
                                 "backgroundColor": "var(--neutral-40, #3a434b)",
-                                "border": "1px solid rgba(0,0,0,0.35)"
+                                "border": "1px solid var(--mc-lamp-rim)"
                               }
                             },
                             "position": {
