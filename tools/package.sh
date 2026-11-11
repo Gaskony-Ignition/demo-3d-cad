@@ -24,10 +24,10 @@
 #
 #   1. The zip is made from INSIDE the project directory. A zip whose entries
 #      start with "Machine_HMI_Demo/" imports as an empty project.
-#   2. Perspective global-props never travels. It carries the rig's own identity
-#      provider and session settings, and importing it silently reconfigures the
-#      target gateway. This project has none; the exclusion below is a guard so
-#      that stays true if one is ever added on a gateway and pulled back.
+#   2. Perspective global-props travels only as the workspace copy (md5 09d72c9d,
+#      ../docs/lockdown-recipe.md): IdP `default`, no user source, no database,
+#      autoIdpAuth on. A rig's own copy would carry its identity provider and
+#      session settings to every gateway, so any other copy fails the build.
 set -euo pipefail
 # Repo gate (REPO-STANDARD.md). Blocking; bypass deliberately with --skip-readme-check.
 if [[ " $* " != *" --skip-readme-check "* ]]; then
@@ -282,7 +282,6 @@ trap 'rm -f "$TMPZIP"; [[ $EDGE -eq 1 ]] && rm -rf "$SRC"' EXIT
 
 ( cd "$SRC" && zip -q -r "$TMPZIP" . \
     -x '.gaskony/*' \
-    -x '*/global-props/*' \
     -x '*.pyc' -x '*__pycache__*' -x '.DS_Store' )
 
 # zip exits 0 on some partial writes; make it prove the archive reads back.
@@ -291,7 +290,7 @@ unzip -t "$TMPZIP" >/dev/null || { echo "package: archive failed its integrity t
 # Count what went in against what is on disk, so a silently short archive is
 # caught by arithmetic rather than by spot-checking a few known files.
 ON_DISK="$(cd "$SRC" && find . -type f \
-             ! -path './.gaskony/*' ! -path '*/global-props/*' \
+             ! -path './.gaskony/*' \
              ! -name '*.pyc' ! -name '.DS_Store' | wc -l)"
 IN_ZIP="$(unzip -Z1 "$TMPZIP" | grep -vc '/$' || true)"
 if [[ "$ON_DISK" -ne "$IN_ZIP" ]]; then
@@ -314,8 +313,9 @@ if [[ "$FIRST" == "$NAME/"* ]]; then
   echo "package: zip is rooted at $NAME/ and would import empty" >&2
   exit 1
 fi
-if printf '%s\n' "$LISTING" | grep -q 'global-props'; then
-  echo "package: global-props leaked into the zip" >&2
+GP_MD5="$( (unzip -p "$TMPZIP" ignition/global-props/data.bin 2>/dev/null || true) | md5sum | cut -d' ' -f1)"
+if [[ "$GP_MD5" != 09d72c9db67fa5bcc763dab27816d0c8 ]]; then
+  echo "package: ignition/global-props must be the workspace copy (md5 09d72c9d, docs/lockdown-recipe.md); it is $GP_MD5" >&2
   exit 1
 fi
 if ! printf '%s\n' "$LISTING" | grep -q 'webdev/resources/lib/three.min.js'; then

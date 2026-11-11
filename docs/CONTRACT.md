@@ -605,3 +605,21 @@ next run:
 
 `tools/webdev_page.py extract` brings a Designer edit of the 3D page back into
 `src/` before it is overwritten. It is the one direction that is not automatic.
+
+## Installing on Edge
+
+There are **two release zips** — Edge permits exactly one realtime tag
+provider, called `edge` out of the box, so the Edge build is the same project
+with the provider name substituted at build time.
+
+| Gateway | Zip |
+| --- | --- |
+| Standard Ignition, Maker | `Machine_HMI_Demo-<version>.zip` |
+| Ignition Edge Panel | `Machine_HMI_Demo_Edge-<version>.zip` |
+
+There is no project import on Edge. Install by copying the unzipped project
+over Edge's own project folder (`data/projects/Edge/` by default), `chown` it
+to the gateway user, then Config → Platform → Projects → **Scan File
+System**. First, change Config → Platform → **Ignition Edge** →
+**Visualization Module** from Vision to Perspective, or no Perspective
+session opens at all. Then open Setup and press **RUN SETUP**.
