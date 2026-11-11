@@ -327,8 +327,14 @@
                 "binding": {
                   "type": "expr",
                   "config": {
-                    "expression": "\"/system/webdev/\" + runScript(\"system.project.getProjectName()\") + \"/cell3d?camera=\" + {view.params.camera} + \"&hud=\" + if({view.params.hud}, \"1\", \"0\") + \"&theme=\" + {view.params.theme} + \"&watermark=\" + if({view.params.watermark}, \"1\", \"0\") + if({view.params.scene} = \"\", \"\", \"&scene=\" + {view.params.scene})"
-                  }
+                    "expression": "\"?camera=\" + {view.params.camera} + \"&hud=\" + if({view.params.hud}, \"1\", \"0\") + \"&theme=\" + {view.params.theme} + \"&watermark=\" + if({view.params.watermark}, \"1\", \"0\") + if({view.params.scene} = \"\", \"\", \"&scene=\" + {view.params.scene})"
+                  },
+                  "transforms": [
+                    {
+                      "type": "script",
+                      "code": "\treturn MachineDemo.ui.webdevUrl(\"cell3d\", value)"
+                    }
+                  ]
                 }
               }
             }

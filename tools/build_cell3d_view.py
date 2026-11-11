@@ -63,10 +63,8 @@ COL_BG = "var(--md-bg, #171b20)"
 # ("Project \"Machine_HMI_Demo\" not found"). So the project segment is
 # resolved at RUNTIME, in the binding, by the session's own project.
 #
-# There is no session prop for it - session.props has no projectName - so this
-# is runScript() against system.project.getProjectName(). Verified resolving on
-# a copy imported under a different name; see docs/CONTRACT.md.
-WEBDEV_PROJECT = 'runScript("system.project.getProjectName()")'
+# There is no session prop for it, so MachineDemo.ui.webdevUrl() asks
+# system.project.getProjectName() in a script transform.
 WEBDEV_RES = "cell3d"
 PROVIDER = "MachineDemo"
 
@@ -303,12 +301,14 @@ cell_iframe = {
 bind(
     cell_iframe,
     "props.src",
-    '"/system/webdev/" + ' + WEBDEV_PROJECT + ' + "/' + WEBDEV_RES + '?camera=" + {view.params.camera}'
+    '"?camera=" + {view.params.camera}'
     ' + "&hud=" + if({view.params.hud}, "1", "0")'
     ' + "&theme=" + {view.params.theme}'
     ' + "&watermark=" + if({view.params.watermark}, "1", "0")'
     ' + if({view.params.scene} = "", "", "&scene=" + {view.params.scene})',
 )
+cell_iframe["propConfig"]["props.src"]["binding"]["transforms"] = [
+    {"type": "script", "code": '\treturn MachineDemo.ui.webdevUrl("%s", value)' % WEBDEV_RES}]
 
 # --- the geometry panel ------------------------------------------------------
 # Fifteen numeric entry fields, each bound BIDIRECTIONALLY to one of the

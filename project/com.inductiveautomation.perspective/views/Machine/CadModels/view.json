@@ -180,10 +180,16 @@
             "propConfig": {
               "props.options": {
                 "binding": {
-                  "type": "expr",
+                  "type": "property",
                   "config": {
-                    "expression": "runScript(\"MachineDemo.cad.uploadedOptions\", 0, {view.custom.rev})"
-                  }
+                    "path": "view.custom.rev"
+                  },
+                  "transforms": [
+                    {
+                      "type": "script",
+                      "code": "\treturn MachineDemo.cad.uploadedOptions(value)"
+                    }
+                  ]
                 }
               },
               "props.value": {

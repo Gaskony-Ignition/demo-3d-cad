@@ -175,7 +175,7 @@ To put the viewer on a screen of your own, drop an `ia.display.iframe` into a
 Perspective view and build its `src` the way `Machine/CadModel` does, so it
 keeps working when the project is called something else:
 
-    "/system/webdev/" + runScript("system.project.getProjectName()") + "/cadview"
+    MachineDemo.ui.webdevUrl("cadview", "")    # a script transform on the src binding
 
 A literal project name in that `src` is the one mistake that turns this page
 into `HTTP ERROR 404 Project "..." not found` on somebody else's gateway.

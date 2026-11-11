@@ -394,15 +394,12 @@ project name for the Edge one, and anything at all if it was imported through
 the Designer, where the operator types the name.
 
 **Nothing in the project may hard-code it.** The Perspective views that embed
-these pages resolve it at runtime:
-
-```
-"/system/webdev/" + runScript("system.project.getProjectName()") + "/cell3d?..."
-```
+these pages resolve it at runtime: an expression builds the query string and a script transform,
+`MachineDemo.ui.webdevUrl("cell3d", value)`, puts
+`"/system/webdev/" + system.project.getProjectName() + "/cell3d"` in front of it.
 
 There is no session property for it — `session.props` has no `projectName` — so
-`runScript` is the mechanism, and it is verified against a copy imported under a
-different name. A literal here produced
+`system.project.getProjectName()` is the mechanism. A literal here produced
 `HTTP ERROR 404 Project "Machine_HMI_Demo" not found` on a customer's gateway
 while every other screen in the project worked, because only the 3D and CAD
 pages leave Perspective. Inside a page, every asset URL is RELATIVE

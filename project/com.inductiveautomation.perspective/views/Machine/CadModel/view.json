@@ -145,10 +145,16 @@
                 "propConfig": {
                   "props.options": {
                     "binding": {
-                      "type": "expr",
+                      "type": "property",
                       "config": {
-                        "expression": "runScript(\"MachineDemo.cad.options\", 0, {view.custom.rev})"
-                      }
+                        "path": "view.custom.rev"
+                      },
+                      "transforms": [
+                        {
+                          "type": "script",
+                          "code": "\treturn MachineDemo.cad.options(value)"
+                        }
+                      ]
                     }
                   },
                   "props.value": {
@@ -308,8 +314,14 @@
                 "binding": {
                   "type": "expr",
                   "config": {
-                    "expression": "\"/system/webdev/\" + runScript(\"system.project.getProjectName()\") + \"/cadview?v=\" + {view.custom.rev} + if({view.custom.model} = \"_builtin\" || {view.custom.model} = \"\", \"\", \"&model=\" + {view.custom.model})"
-                  }
+                    "expression": "\"?v=\" + {view.custom.rev} + if({view.custom.model} = \"_builtin\" || {view.custom.model} = \"\", \"\", \"&model=\" + {view.custom.model})"
+                  },
+                  "transforms": [
+                    {
+                      "type": "script",
+                      "code": "\treturn MachineDemo.ui.webdevUrl(\"cadview\", value)"
+                    }
+                  ]
                 }
               }
             }

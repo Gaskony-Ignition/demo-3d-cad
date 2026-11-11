@@ -16,10 +16,16 @@
     },
     "custom.slots": {
       "binding": {
-        "type": "expr",
+        "type": "property",
         "config": {
-          "expression": "runScript(\"MachineDemo.cad.simSlots\", 0, {view.custom.rev})"
-        }
+          "path": "view.custom.rev"
+        },
+        "transforms": [
+          {
+            "type": "script",
+            "code": "\treturn MachineDemo.cad.simSlots(value)"
+          }
+        ]
       }
     }
   },
@@ -119,10 +125,20 @@
             "propConfig": {
               "props.options": {
                 "binding": {
-                  "type": "expr",
+                  "type": "expr-struct",
                   "config": {
-                    "expression": "runScript(\"MachineDemo.cad.partOptions\", 0, {view.params.model}, {view.custom.rev})"
-                  }
+                    "struct": {
+                      "model": "{view.params.model}",
+                      "rev": "{view.custom.rev}"
+                    },
+                    "waitOnAll": true
+                  },
+                  "transforms": [
+                    {
+                      "type": "script",
+                      "code": "\treturn MachineDemo.cad.partOptions(value.model, value.rev)"
+                    }
+                  ]
                 }
               },
               "props.value": {

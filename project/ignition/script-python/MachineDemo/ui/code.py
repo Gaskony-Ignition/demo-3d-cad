@@ -468,3 +468,7 @@ def applyModelChange(custom, payload):
 		custom.model = payload['model']
 
 
+
+def webdevUrl(resource, query):
+	"""Path to this project's WebDev resource with query appended; works under any project name."""
+	return "/system/webdev/" + system.project.getProjectName() + "/" + resource + query

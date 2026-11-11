@@ -32,9 +32,6 @@ OUT = os.path.join(VIEWS, "CadModel")
 
 COL_BG = "var(--md-bg, #171b20)"
 
-# Same reasoning as build_cell3d_view.py: the project name is not knowable at
-# build time, so the binding asks the session for it.
-WEBDEV_PROJECT = 'runScript("system.project.getProjectName()")'
 WEBDEV_RES = "cadview"
 
 TITLE = "Zone 2 · Robot Cell 2 — CAD model"
@@ -110,11 +107,13 @@ cad_iframe = {
         "props.src": {
             "binding": {
                 "type": "expr",
-                "config": {"expression": '"/system/webdev/" + ' + WEBDEV_PROJECT
-                                         + ' + "/' + WEBDEV_RES + '?v=" + {view.custom.rev}'
+                "config": {"expression": '"?v=" + {view.custom.rev}'
                                          + ' + if({view.custom.model} = "' + BUILTIN + '" ||'
                                          + ' {view.custom.model} = "", "",'
                                          + ' "&model=" + {view.custom.model})'},
+                # The project name is only known at runtime, under any import name.
+                "transforms": [{"type": "script", "code":
+                                '\treturn MachineDemo.ui.webdevUrl("%s", value)' % WEBDEV_RES}],
             }
         }
     },
@@ -138,9 +137,8 @@ model_pick = {
                   "borderRadius": BTN_STYLE["borderRadius"]},
     },
     "propConfig": {
-        "props.options": {"binding": {"type": "expr", "config": {
-            # 0 = no polling; {view.custom.rev} re-runs it after an upload/delete
-            "expression": 'runScript("MachineDemo.cad.options", 0, {view.custom.rev})'}}},
+        # view.custom.rev changes after an upload or delete, which re-reads the list.
+        "props.options": {"binding": {"type": "property", "config": {"path": "view.custom.rev"}, "transforms": [{"type": "script", "code": "\treturn MachineDemo.cad.options(value)"}]}},
         "props.value": {"binding": {"type": "property", "config": {
             "path": "view.custom.model", "bidirectional": True}}},
     },
@@ -317,8 +315,7 @@ popup = {
                   "props": {"placeholder": "Uploaded models",
                             "style": {"minHeight": "38px", "fontSize": "12.5px"}},
                   "propConfig": {
-                      "props.options": {"binding": {"type": "expr", "config": {"expression":
-                          'runScript("MachineDemo.cad.uploadedOptions", 0, {view.custom.rev})'}}},
+                      "props.options": {"binding": {"type": "property", "config": {"path": "view.custom.rev"}, "transforms": [{"type": "script", "code": "\treturn MachineDemo.cad.uploadedOptions(value)"}]}},
                       "props.value": {"binding": {"type": "property", "config": {
                           "path": "view.custom.delModel", "bidirectional": True}}}}},
                  {"type": "ia.input.button", "meta": {"name": "Delete"},
@@ -405,8 +402,7 @@ sim = {
     "params": {"model": BUILTIN},
     "propConfig": {
         "params.model": {"paramDirection": "input", "persistent": True},
-        "custom.slots": {"binding": {"type": "expr", "config": {
-            "expression": 'runScript("MachineDemo.cad.simSlots", 0, {view.custom.rev})'}}},
+        "custom.slots": {"binding": {"type": "property", "config": {"path": "view.custom.rev"}, "transforms": [{"type": "script", "code": "\treturn MachineDemo.cad.simSlots(value)"}]}},
     },
     "props": {"defaultSize": {"width": 600, "height": 430}},
     "root": {
@@ -433,8 +429,10 @@ sim = {
                             "search": {"enabled": True},
                             "style": {"minHeight": "38px", "fontSize": "12.5px"}},
                   "propConfig": {
-                      "props.options": {"binding": {"type": "expr", "config": {"expression":
-                          'runScript("MachineDemo.cad.partOptions", 0, {view.params.model}, {view.custom.rev})'}}},
+                      "props.options": {"binding": {"type": "expr-struct", "config": {
+                          "struct": {"model": "{view.params.model}", "rev": "{view.custom.rev}"},
+                          "waitOnAll": True}, "transforms": [{"type": "script", "code":
+                          "\treturn MachineDemo.cad.partOptions(value.model, value.rev)"}]}},
                       "props.value": {"binding": {"type": "property", "config": {
                           "path": "view.custom.part", "bidirectional": True}}}}},
                  {"type": "ia.input.dropdown", "meta": {"name": "Priority"},
