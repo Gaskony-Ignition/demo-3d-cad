@@ -20,8 +20,11 @@
    color-scheme follows the theme too - `light dark` lets the browser paint
    scrollbars and form controls to match, and stops Chrome's auto dark mode
    repainting SVG fills, which is what it was here for originally. */
-:root {
+html {
 	color-scheme: light dark;
+}
+
+:root {
 	--mc-bg:      var(--neutral-10, #171b20);
 	--mc-panel:   var(--neutral-20, #1d232a);
 	--mc-line:    var(--neutral-40, #2c343d);
