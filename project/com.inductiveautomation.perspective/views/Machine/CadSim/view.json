@@ -215,7 +215,7 @@
                   "type": "script",
                   "scope": "G",
                   "config": {
-                    "script": "\tfrom java.lang import Throwable\n\tv = self.view.custom\n\ttry:\n\t\tslot = MachineDemo.cad.simRaise(v.part, v.priority)\n\texcept (Throwable, Exception) as e:\n\t\tv.status = u\"Not raised: %s\" % e\n\t\tv.ok = False\n\t\treturn\n\tv.status = u\"%s alarm raised on %s (slot %d).\" % (v.priority, v.part, slot)\n\tv.ok = True\n\tv.rev = (v.rev or 0) + 1\n"
+                    "script": "\tMachineDemo.ui.simRaise(self.view.custom)\n"
                   }
                 }
               }
@@ -314,7 +314,7 @@
                   "type": "script",
                   "scope": "G",
                   "config": {
-                    "script": "\tfrom java.lang import Throwable\n\tv = self.view.custom\n\ttry:\n\t\tMachineDemo.cad.simAck(1)\n\texcept (Throwable, Exception) as e:\n\t\tv.status = u\"Failed: %s\" % e\n\t\tv.ok = False\n\t\treturn\n\tv.status = u\"\"\n\tv.ok = True\n\tv.rev = (v.rev or 0) + 1\n"
+                    "script": "\tMachineDemo.ui.simCommand(self.view.custom, MachineDemo.cad.simAck, 1)\n"
                   }
                 }
               }
@@ -359,7 +359,7 @@
                   "type": "script",
                   "scope": "G",
                   "config": {
-                    "script": "\tfrom java.lang import Throwable\n\tv = self.view.custom\n\ttry:\n\t\tMachineDemo.cad.simClear(1)\n\texcept (Throwable, Exception) as e:\n\t\tv.status = u\"Failed: %s\" % e\n\t\tv.ok = False\n\t\treturn\n\tv.status = u\"\"\n\tv.ok = True\n\tv.rev = (v.rev or 0) + 1\n"
+                    "script": "\tMachineDemo.ui.simCommand(self.view.custom, MachineDemo.cad.simClear, 1)\n"
                   }
                 }
               }
@@ -449,7 +449,7 @@
                   "type": "script",
                   "scope": "G",
                   "config": {
-                    "script": "\tfrom java.lang import Throwable\n\tv = self.view.custom\n\ttry:\n\t\tMachineDemo.cad.simAck(2)\n\texcept (Throwable, Exception) as e:\n\t\tv.status = u\"Failed: %s\" % e\n\t\tv.ok = False\n\t\treturn\n\tv.status = u\"\"\n\tv.ok = True\n\tv.rev = (v.rev or 0) + 1\n"
+                    "script": "\tMachineDemo.ui.simCommand(self.view.custom, MachineDemo.cad.simAck, 2)\n"
                   }
                 }
               }
@@ -494,7 +494,7 @@
                   "type": "script",
                   "scope": "G",
                   "config": {
-                    "script": "\tfrom java.lang import Throwable\n\tv = self.view.custom\n\ttry:\n\t\tMachineDemo.cad.simClear(2)\n\texcept (Throwable, Exception) as e:\n\t\tv.status = u\"Failed: %s\" % e\n\t\tv.ok = False\n\t\treturn\n\tv.status = u\"\"\n\tv.ok = True\n\tv.rev = (v.rev or 0) + 1\n"
+                    "script": "\tMachineDemo.ui.simCommand(self.view.custom, MachineDemo.cad.simClear, 2)\n"
                   }
                 }
               }
@@ -584,7 +584,7 @@
                   "type": "script",
                   "scope": "G",
                   "config": {
-                    "script": "\tfrom java.lang import Throwable\n\tv = self.view.custom\n\ttry:\n\t\tMachineDemo.cad.simAck(3)\n\texcept (Throwable, Exception) as e:\n\t\tv.status = u\"Failed: %s\" % e\n\t\tv.ok = False\n\t\treturn\n\tv.status = u\"\"\n\tv.ok = True\n\tv.rev = (v.rev or 0) + 1\n"
+                    "script": "\tMachineDemo.ui.simCommand(self.view.custom, MachineDemo.cad.simAck, 3)\n"
                   }
                 }
               }
@@ -629,7 +629,7 @@
                   "type": "script",
                   "scope": "G",
                   "config": {
-                    "script": "\tfrom java.lang import Throwable\n\tv = self.view.custom\n\ttry:\n\t\tMachineDemo.cad.simClear(3)\n\texcept (Throwable, Exception) as e:\n\t\tv.status = u\"Failed: %s\" % e\n\t\tv.ok = False\n\t\treturn\n\tv.status = u\"\"\n\tv.ok = True\n\tv.rev = (v.rev or 0) + 1\n"
+                    "script": "\tMachineDemo.ui.simCommand(self.view.custom, MachineDemo.cad.simClear, 3)\n"
                   }
                 }
               }
@@ -719,7 +719,7 @@
                   "type": "script",
                   "scope": "G",
                   "config": {
-                    "script": "\tfrom java.lang import Throwable\n\tv = self.view.custom\n\ttry:\n\t\tMachineDemo.cad.simAck(4)\n\texcept (Throwable, Exception) as e:\n\t\tv.status = u\"Failed: %s\" % e\n\t\tv.ok = False\n\t\treturn\n\tv.status = u\"\"\n\tv.ok = True\n\tv.rev = (v.rev or 0) + 1\n"
+                    "script": "\tMachineDemo.ui.simCommand(self.view.custom, MachineDemo.cad.simAck, 4)\n"
                   }
                 }
               }
@@ -764,7 +764,7 @@
                   "type": "script",
                   "scope": "G",
                   "config": {
-                    "script": "\tfrom java.lang import Throwable\n\tv = self.view.custom\n\ttry:\n\t\tMachineDemo.cad.simClear(4)\n\texcept (Throwable, Exception) as e:\n\t\tv.status = u\"Failed: %s\" % e\n\t\tv.ok = False\n\t\treturn\n\tv.status = u\"\"\n\tv.ok = True\n\tv.rev = (v.rev or 0) + 1\n"
+                    "script": "\tMachineDemo.ui.simCommand(self.view.custom, MachineDemo.cad.simClear, 4)\n"
                   }
                 }
               }
@@ -861,7 +861,7 @@
                   "type": "script",
                   "scope": "G",
                   "config": {
-                    "script": "\tfrom java.lang import Throwable\n\tv = self.view.custom\n\ttry:\n\t\tMachineDemo.cad.simAck()\n\texcept (Throwable, Exception) as e:\n\t\tv.status = u\"Failed: %s\" % e\n\t\tv.ok = False\n\t\treturn\n\tv.status = u\"\"\n\tv.ok = True\n\tv.rev = (v.rev or 0) + 1\n"
+                    "script": "\tMachineDemo.ui.simCommand(self.view.custom, MachineDemo.cad.simAck)\n"
                   }
                 }
               }
@@ -896,7 +896,7 @@
                   "type": "script",
                   "scope": "G",
                   "config": {
-                    "script": "\tfrom java.lang import Throwable\n\tv = self.view.custom\n\ttry:\n\t\tMachineDemo.cad.simClear()\n\texcept (Throwable, Exception) as e:\n\t\tv.status = u\"Failed: %s\" % e\n\t\tv.ok = False\n\t\treturn\n\tv.status = u\"\"\n\tv.ok = True\n\tv.rev = (v.rev or 0) + 1\n"
+                    "script": "\tMachineDemo.ui.simCommand(self.view.custom, MachineDemo.cad.simClear)\n"
                   }
                 }
               }

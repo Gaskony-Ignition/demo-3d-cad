@@ -3744,35 +3744,35 @@
                               "dom": {
                                 "onMouseDown": {
                                   "config": {
-                                    "script": "\tfrom java.lang import Throwable\n\tself.view.custom.seek = False\n\tself.view.custom.jog = -1\n\ttry:\n\t\tsystem.tag.writeBlocking([\"[MachineDemo]Robot/JogDown\"], [True])\n\texcept Throwable:\n\t\tpass\n"
+                                    "script": "\tMachineDemo.ui.jogStart(self.view, -1)"
                                   },
                                   "scope": "G",
                                   "type": "script"
                                 },
                                 "onMouseUp": {
                                   "config": {
-                                    "script": "\tfrom java.lang import Throwable\n\tself.view.custom.jog = 0\n\ttry:\n\t\tsystem.tag.writeBlocking([\"[MachineDemo]Robot/JogUp\", \"[MachineDemo]Robot/JogDown\"], [False, False])\n\texcept Throwable:\n\t\tpass\n"
+                                    "script": "\tMachineDemo.ui.jogStop(self.view)"
                                   },
                                   "scope": "G",
                                   "type": "script"
                                 },
                                 "onMouseLeave": {
                                   "config": {
-                                    "script": "\tfrom java.lang import Throwable\n\tself.view.custom.jog = 0\n\ttry:\n\t\tsystem.tag.writeBlocking([\"[MachineDemo]Robot/JogUp\", \"[MachineDemo]Robot/JogDown\"], [False, False])\n\texcept Throwable:\n\t\tpass\n"
+                                    "script": "\tMachineDemo.ui.jogStop(self.view)"
                                   },
                                   "scope": "G",
                                   "type": "script"
                                 },
                                 "onPointerCancel": {
                                   "config": {
-                                    "script": "\tfrom java.lang import Throwable\n\tself.view.custom.jog = 0\n\ttry:\n\t\tsystem.tag.writeBlocking([\"[MachineDemo]Robot/JogUp\", \"[MachineDemo]Robot/JogDown\"], [False, False])\n\texcept Throwable:\n\t\tpass\n"
+                                    "script": "\tMachineDemo.ui.jogStop(self.view)"
                                   },
                                   "scope": "G",
                                   "type": "script"
                                 },
                                 "onTouchEnd": {
                                   "config": {
-                                    "script": "\tfrom java.lang import Throwable\n\tself.view.custom.jog = 0\n\ttry:\n\t\tsystem.tag.writeBlocking([\"[MachineDemo]Robot/JogUp\", \"[MachineDemo]Robot/JogDown\"], [False, False])\n\texcept Throwable:\n\t\tpass\n"
+                                    "script": "\tMachineDemo.ui.jogStop(self.view)"
                                   },
                                   "scope": "G",
                                   "type": "script"
@@ -3837,35 +3837,35 @@
                               "dom": {
                                 "onMouseDown": {
                                   "config": {
-                                    "script": "\tfrom java.lang import Throwable\n\tself.view.custom.seek = False\n\tself.view.custom.jog = 1\n\ttry:\n\t\tsystem.tag.writeBlocking([\"[MachineDemo]Robot/JogUp\"], [True])\n\texcept Throwable:\n\t\tpass\n"
+                                    "script": "\tMachineDemo.ui.jogStart(self.view, 1)"
                                   },
                                   "scope": "G",
                                   "type": "script"
                                 },
                                 "onMouseUp": {
                                   "config": {
-                                    "script": "\tfrom java.lang import Throwable\n\tself.view.custom.jog = 0\n\ttry:\n\t\tsystem.tag.writeBlocking([\"[MachineDemo]Robot/JogUp\", \"[MachineDemo]Robot/JogDown\"], [False, False])\n\texcept Throwable:\n\t\tpass\n"
+                                    "script": "\tMachineDemo.ui.jogStop(self.view)"
                                   },
                                   "scope": "G",
                                   "type": "script"
                                 },
                                 "onMouseLeave": {
                                   "config": {
-                                    "script": "\tfrom java.lang import Throwable\n\tself.view.custom.jog = 0\n\ttry:\n\t\tsystem.tag.writeBlocking([\"[MachineDemo]Robot/JogUp\", \"[MachineDemo]Robot/JogDown\"], [False, False])\n\texcept Throwable:\n\t\tpass\n"
+                                    "script": "\tMachineDemo.ui.jogStop(self.view)"
                                   },
                                   "scope": "G",
                                   "type": "script"
                                 },
                                 "onPointerCancel": {
                                   "config": {
-                                    "script": "\tfrom java.lang import Throwable\n\tself.view.custom.jog = 0\n\ttry:\n\t\tsystem.tag.writeBlocking([\"[MachineDemo]Robot/JogUp\", \"[MachineDemo]Robot/JogDown\"], [False, False])\n\texcept Throwable:\n\t\tpass\n"
+                                    "script": "\tMachineDemo.ui.jogStop(self.view)"
                                   },
                                   "scope": "G",
                                   "type": "script"
                                 },
                                 "onTouchEnd": {
                                   "config": {
-                                    "script": "\tfrom java.lang import Throwable\n\tself.view.custom.jog = 0\n\ttry:\n\t\tsystem.tag.writeBlocking([\"[MachineDemo]Robot/JogUp\", \"[MachineDemo]Robot/JogDown\"], [False, False])\n\texcept Throwable:\n\t\tpass\n"
+                                    "script": "\tMachineDemo.ui.jogStop(self.view)"
                                   },
                                   "scope": "G",
                                   "type": "script"
@@ -3945,7 +3945,7 @@
                               "component": {
                                 "onActionPerformed": {
                                   "config": {
-                                    "script": "\tfrom java.lang import Throwable\n\tself.view.custom.jog = 0\n\tself.view.custom.seek = False\n\ttry:\n\t\tcur = float(system.tag.readBlocking([\"[MachineDemo]Robot/Lift_mm\"])[0].value)\n\t\tself.view.custom.liftTarget = cur\n\texcept Throwable:\n\t\tpass\n\ttry:\n\t\tsystem.tag.writeBlocking([\"[MachineDemo]Robot/JogUp\", \"[MachineDemo]Robot/JogDown\"], [False, False])\n\texcept Throwable:\n\t\tpass\n"
+                                    "script": "\tMachineDemo.ui.stopMotion(self.view)"
                                   },
                                   "scope": "G",
                                   "type": "script"
@@ -4197,7 +4197,7 @@
                               "component": {
                                 "onActionPerformed": {
                                   "config": {
-                                    "script": "\tself.view.custom.seek = True\n\tself.view.custom.jog = 0\n\tself.view.custom.liftTarget = 0.0\n\tfrom java.lang import Throwable\n\ttry:\n\t\tsystem.tag.writeBlocking([\"[MachineDemo]Robot/Homed\"], [True])\n\texcept Throwable:\n\t\tpass\n"
+                                    "script": "\tMachineDemo.ui.homeLift(self.view)"
                                   },
                                   "scope": "G",
                                   "type": "script"
@@ -9312,7 +9312,7 @@
                   "transforms": [
                     {
                       "type": "script",
-                      "code": "\tfrom java.lang import Throwable\n\ttry:\n\t\tj = int(self.view.custom.jog)\n\texcept Throwable:\n\t\tj = 0\n\ttry:\n\t\tcur = float(system.tag.readBlocking([\"[MachineDemo]Robot/Lift_mm\"])[0].value)\n\texcept Throwable:\n\t\treturn \"\"\n\ttry:\n\t\ttgt = float(self.view.custom.liftTarget)\n\texcept Throwable:\n\t\ttgt = cur\n\tnxt = cur\n\tif j != 0:\n\t\tnxt = cur + (j * 16.0)\n\t\tif nxt < 0.0:\n\t\t\tnxt = 0.0\n\t\tif nxt > 1200.0:\n\t\t\tnxt = 1200.0\n\t\tself.view.custom.liftTarget = nxt\n\telif self.view.custom.seek:\n\t\td = tgt - cur\n\t\tif abs(d) <= 26.0:\n\t\t\tnxt = tgt\n\t\t\tself.view.custom.seek = False\n\t\telif d > 0:\n\t\t\tnxt = cur + 26.0\n\t\telse:\n\t\t\tnxt = cur - 26.0\n\telse:\n\t\treturn \"\"\n\ttry:\n\t\tsystem.tag.writeBlocking([\"[MachineDemo]Robot/Lift_mm\"], [nxt])\n\texcept Throwable:\n\t\tpass\n\treturn \"\"\n"
+                      "code": "\treturn MachineDemo.ui.liftStep(self.view)"
                     }
                   ]
                 }
@@ -9344,7 +9344,7 @@
       "system": {
         "onStartup": {
           "config": {
-            "script": "\tfrom java.lang import Throwable\n\ttry:\n\t\tcur = float(system.tag.readBlocking([\"[MachineDemo]Robot/Lift_mm\"])[0].value)\n\t\tself.view.custom.liftTarget = cur\n\texcept Throwable:\n\t\tpass\n\tself.view.custom.jog = 0\n\tself.view.custom.seek = False\n"
+            "script": "\tMachineDemo.ui.manualStartup(self.view)"
           },
           "scope": "G",
           "type": "script"
@@ -9394,7 +9394,7 @@
         "transforms": [
           {
             "type": "script",
-            "code": "\tfrom java.lang import Throwable\n\trows = []\n\ttry:\n\t\tevts = MachineDemo.plant.liveAlarms()\n\texcept Throwable:\n\t\tevts = []\n\tfor a in evts:\n\t\ttxt = str(a.get(\"label\") or a.get(\"name\") or \"Alarm\")\n\t\tif txt.startswith(\"Palletiser / \"):\n\t\t\ttxt = txt[13:]\n\t\tif not a.get(\"acked\"):\n\t\t\ttxt = txt + \"  (unacked)\"\n\t\telif not a.get(\"active\"):\n\t\t\ttxt = txt + \"  (cleared)\"\n\t\trows.append({\"time\": str(a.get(\"time\") or \"\"), \"level\": str(a.get(\"priority\") or \"\").upper(), \"text\": txt})\n\trows = rows[:20]\n\tif not rows:\n\t\trows.append({\"time\": system.date.format(system.date.now(), \"HH:mm:ss\"), \"level\": \"INFO\", \"text\": \"Cell healthy - no alarms standing\"})\n\twhile len(rows) < 20:\n\t\trows.append({\"time\": \"\", \"level\": \"\", \"text\": \"\"})\n\treturn rows\n"
+            "code": "\treturn MachineDemo.ui.alarmMessages()"
           }
         ]
       }

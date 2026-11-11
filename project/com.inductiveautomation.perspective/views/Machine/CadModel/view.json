@@ -25,7 +25,7 @@
           "pageScope": true,
           "sessionScope": false,
           "viewScope": false,
-          "script": "\tv = self.view.custom\n\tv.rev = (v.rev or 0) + 1\n\tif payload.get('deleted') and v.model == payload['deleted']:\n\t\tv.model = '_builtin'\n\telif payload.get('model'):\n\t\tv.model = payload['model']\n"
+          "script": "\tMachineDemo.ui.applyModelChange(self.view.custom, payload)\n"
         }
       ]
     },

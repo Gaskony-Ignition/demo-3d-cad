@@ -194,12 +194,7 @@ view = {
                 "sessionScope": False,
                 "viewScope": False,
                 "script": (
-                    "\tv = self.view.custom\n"
-                    "\tv.rev = (v.rev or 0) + 1\n"
-                    "\tif payload.get('deleted') and v.model == payload['deleted']:\n"
-                    "\t\tv.model = %r\n"
-                    "\telif payload.get('model'):\n"
-                    "\t\tv.model = payload['model']\n" % BUILTIN),
+                    "\tMachineDemo.ui.applyModelChange(self.view.custom, payload)\n"),
             }],
         },
         "props": {
@@ -263,46 +258,16 @@ def heading(name, text):
                  letterSpacing="1.2px", textTransform="uppercase", color=QUIET)
 
 
-UPLOAD_SCRIPT = """\tfrom java.lang import Throwable
-\tname = self.view.custom.name
-\ttry:
-\t\tr = MachineDemo.cad.save(event.file.name, event.file.getBytes(), name)
-\texcept (Throwable, Exception) as e:
-\t\tself.view.custom.status = u"Not stored: %s" % e
-\t\tself.view.custom.ok = False
-\t\treturn
-\tself.view.custom.status = u"%s %s - %s, %d part file(s). It is showing now." % (
-\t\tr["name"], "replaced" if r["replaced"] else "stored", r["kind"].upper(), r["parts"])
-\tself.view.custom.ok = True
-\tself.view.custom.rev = (self.view.custom.rev or 0) + 1
-\tself.view.custom.name = ""
-\tsystem.perspective.sendMessage("@MSG@", payload={"model": r["name"]}, scope="page")
+UPLOAD_SCRIPT = """\tmsg = MachineDemo.ui.uploadModel(self.view.custom, event.file)
+\tif msg:
+\t\tsystem.perspective.sendMessage("@MSG@", payload=msg, scope="page")
 """.replace("@MSG@", MSG)
 
 # Two presses: the first arms the button for that model, the second deletes.
 # A confirm popup over a popup is one more thing to dismiss on a touch panel.
-DELETE_SCRIPT = """\tfrom java.lang import Throwable
-\tv = self.view.custom
-\tname = v.delModel
-\tif not name:
-\t\tv.status = u"Choose an uploaded model to delete."
-\t\tv.ok = False
-\t\treturn
-\tif v.armed != name:
-\t\tv.armed = name
-\t\treturn
-\ttry:
-\t\tMachineDemo.cad.delete(name)
-\texcept (Throwable, Exception) as e:
-\t\tv.status = u"Not deleted: %s" % e
-\t\tv.ok = False
-\t\treturn
-\tv.armed = ""
-\tv.status = u"%s deleted." % name
-\tv.ok = True
-\tv.rev = (v.rev or 0) + 1
-\tv.delModel = None
-\tsystem.perspective.sendMessage("@MSG@", payload={"deleted": name}, scope="page")
+DELETE_SCRIPT = """\tmsg = MachineDemo.ui.deleteModel(self.view.custom)
+\tif msg:
+\t\tsystem.perspective.sendMessage("@MSG@", payload=msg, scope="page")
 """.replace("@MSG@", MSG)
 
 popup = {
@@ -396,26 +361,11 @@ print("wrote %s" % POP_OUT)
 
 SLOTS = 4  # MachineDemo.tagdata.CAD_SIM_SLOTS
 
-RAISE_SCRIPT = """\tfrom java.lang import Throwable
-\tv = self.view.custom
-\ttry:
-\t\tslot = MachineDemo.cad.simRaise(v.part, v.priority)
-\texcept (Throwable, Exception) as e:
-\t\tv.status = u"Not raised: %s" % e
-\t\tv.ok = False
-\t\treturn
-\tv.status = u"%s alarm raised on %s (slot %d)." % (v.priority, v.part, slot)
-\tv.ok = True
-\tv.rev = (v.rev or 0) + 1
-"""
+RAISE_SCRIPT = "\tMachineDemo.ui.simRaise(self.view.custom)\n"
 
 
-def action(script):
-    return ("\tfrom java.lang import Throwable\n\tv = self.view.custom\n\ttry:\n"
-            "\t\t" + script + "\n"
-            "\texcept (Throwable, Exception) as e:\n"
-            "\t\tv.status = u\"Failed: %s\" % e\n\t\tv.ok = False\n\t\treturn\n"
-            "\tv.status = u\"\"\n\tv.ok = True\n\tv.rev = (v.rev or 0) + 1\n")
+def action(call, *args):
+    return "\tMachineDemo.ui.simCommand(self.view.custom, %s)\n" % ", ".join((call,) + args)
 
 
 def small_btn(name, text, script, enabled_path=None):
@@ -424,7 +374,7 @@ def small_btn(name, text, script, enabled_path=None):
          "props": {"text": text, "style": dict(copy.deepcopy(BTN_STYLE),
                                                minHeight="32px")},
          "events": {"component": {"onActionPerformed": {
-             "type": "script", "scope": "G", "config": {"script": action(script)}}}}}
+             "type": "script", "scope": "G", "config": {"script": action(*script)}}}}}
     if enabled_path:
         b["propConfig"] = {"props.enabled": {"binding": {
             "type": "property", "config": {"path": enabled_path}}}}
@@ -443,9 +393,9 @@ def slot_row(i):
                                      "fontFamily": "monospace"}},
                  "propConfig": {"props.text": {"binding": {"type": "property",
                      "config": {"path": "view.custom.slots[%d].text" % (i - 1)}}}}},
-                small_btn("Ack", "Ack", "MachineDemo.cad.simAck(%d)" % i,
+                small_btn("Ack", "Ack", ("MachineDemo.cad.simAck", str(i)),
                           "view.custom.slots[%d].active" % (i - 1)),
-                small_btn("Clear", "Clear", "MachineDemo.cad.simClear(%d)" % i,
+                small_btn("Clear", "Clear", ("MachineDemo.cad.simClear", str(i)),
                           "view.custom.slots[%d].active" % (i - 1)),
             ]}
 
@@ -518,8 +468,8 @@ sim = {
                       "props.style.color": {"binding": {"type": "expr", "config": {
                           "expression": 'if({view.custom.ok}, "' + INK + '", '
                                         '"var(--md-fault-ink, #ff8d92)")'}}}}},
-                 small_btn("AckAll", "Ack all", "MachineDemo.cad.simAck()"),
-                 small_btn("ClearAll", "Clear all", "MachineDemo.cad.simClear()"),
+                 small_btn("AckAll", "Ack all", ("MachineDemo.cad.simAck",)),
+                 small_btn("ClearAll", "Clear all", ("MachineDemo.cad.simClear",)),
              ]},
         ],
     },

@@ -1762,7 +1762,7 @@
         "transforms": [
           {
             "type": "script",
-            "code": "\tfrom java.lang import Throwable\n\tout = {\"Critical\": 0, \"High\": 0, \"Medium\": 0, \"Low\": 0, \"Diagnostic\": 0, \"total\": 0, \"active\": 0, \"unacked\": 0}\n\ttry:\n\t\trows = MachineDemo.plant.liveAlarms()\n\texcept Throwable:\n\t\treturn out\n\tfor a in rows:\n\t\tpri = str(a.get(\"priority\") or \"Low\")\n\t\tif pri not in out:\n\t\t\tpri = \"Low\"\n\t\tout[pri] = out[pri] + 1\n\t\tout[\"total\"] = out[\"total\"] + 1\n\t\tif a.get(\"active\"):\n\t\t\tout[\"active\"] = out[\"active\"] + 1\n\t\tif not a.get(\"acked\"):\n\t\t\tout[\"unacked\"] = out[\"unacked\"] + 1\n\treturn out\n"
+            "code": "\treturn MachineDemo.ui.alarmTotals()"
           }
         ]
       }

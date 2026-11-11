@@ -120,7 +120,7 @@
               "type": "script",
               "scope": "G",
               "config": {
-                "script": "\tfrom java.lang import Throwable\n\tname = self.view.custom.name\n\ttry:\n\t\tr = MachineDemo.cad.save(event.file.name, event.file.getBytes(), name)\n\texcept (Throwable, Exception) as e:\n\t\tself.view.custom.status = u\"Not stored: %s\" % e\n\t\tself.view.custom.ok = False\n\t\treturn\n\tself.view.custom.status = u\"%s %s - %s, %d part file(s). It is showing now.\" % (\n\t\tr[\"name\"], \"replaced\" if r[\"replaced\"] else \"stored\", r[\"kind\"].upper(), r[\"parts\"])\n\tself.view.custom.ok = True\n\tself.view.custom.rev = (self.view.custom.rev or 0) + 1\n\tself.view.custom.name = \"\"\n\tsystem.perspective.sendMessage(\"cadModelChanged\", payload={\"model\": r[\"name\"]}, scope=\"page\")\n"
+                "script": "\tmsg = MachineDemo.ui.uploadModel(self.view.custom, event.file)\n\tif msg:\n\t\tsystem.perspective.sendMessage(\"cadModelChanged\", payload=msg, scope=\"page\")\n"
               }
             }
           }
@@ -235,7 +235,7 @@
                   "type": "script",
                   "scope": "G",
                   "config": {
-                    "script": "\tfrom java.lang import Throwable\n\tv = self.view.custom\n\tname = v.delModel\n\tif not name:\n\t\tv.status = u\"Choose an uploaded model to delete.\"\n\t\tv.ok = False\n\t\treturn\n\tif v.armed != name:\n\t\tv.armed = name\n\t\treturn\n\ttry:\n\t\tMachineDemo.cad.delete(name)\n\texcept (Throwable, Exception) as e:\n\t\tv.status = u\"Not deleted: %s\" % e\n\t\tv.ok = False\n\t\treturn\n\tv.armed = \"\"\n\tv.status = u\"%s deleted.\" % name\n\tv.ok = True\n\tv.rev = (v.rev or 0) + 1\n\tv.delModel = None\n\tsystem.perspective.sendMessage(\"cadModelChanged\", payload={\"deleted\": name}, scope=\"page\")\n"
+                    "script": "\tmsg = MachineDemo.ui.deleteModel(self.view.custom)\n\tif msg:\n\t\tsystem.perspective.sendMessage(\"cadModelChanged\", payload=msg, scope=\"page\")\n"
                   }
                 }
               }
