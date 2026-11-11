@@ -3,7 +3,7 @@ The palletising cell's names, tag paths, default geometry, faults and tag/alarm
 helpers - the one place the provider name and machine constants are spelled out.
 """
 
-VERSION = "1.19.2"
+VERSION = "1.19.3"
 
 PROVIDER = "MachineDemo"
 
