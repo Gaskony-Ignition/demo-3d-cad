@@ -1,47 +1,10 @@
-"""
-MachineDemo.tagdata - the cell's tag tree, as data.
-
-A project export carries project resources and nothing else, so tags have to
-travel some other way. Carrying them HERE means they travel inside the project
-and MachineDemo.setup writes them into the provider with system.tag.configure:
-importing the project is the entire install, with no second file to find and no
-Designer step.
-
-The tree is built by the small helpers below rather than pasted in as JSON,
-because the alarm definitions are the part a reader needs to be able to check
-and a 100 kB JSON string literal is not checkable.
-
-Two things in here are shaped the way an Ignition integrator would shape them
-rather than the way a demo usually is:
-
-* `Config/` holds the machine's GEOMETRY as tags. Case and pallet sizes, the
-  conveyor and where the two pallet stations sit. The simulator, the 3D page
-  and the screens all read them live, so re-sizing the machine is fifteen tag
-  writes from the Designer and not a source edit - and the arm places to the
-  new pattern within a tick of the write.
-* `Robot` is a UDT INSTANCE of `_types_/RobotArm`, not a folder of nineteen
-  loose tags. Its members are named exactly as those tags were, so every path
-  that already existed - `[MachineDemo]Robot/J2_deg` and the rest - still
-  resolves, and the alarm on `Robot/Fault` is defined once on the type.
-
-Alarm design, deliberately:
-
-* The five Faults/* tags and Robot/Fault alarm on Equality-true.
-* The four Safety/* booleans alarm on Equality-FALSE - "guards closed" going
-  false is the alarm, and writing it that way keeps the tag reading the way an
-  electrician would name the circuit.
-* On-delays are ZERO on every digital and 2 s on the one analog. Alarm
-  on-delays are counted in REAL seconds by the alarm engine, and the simulator
-  can be run at 8x, so any on-delay long enough to be interesting is an alarm a
-  sped-up demo would never raise.
+"""The cell's tag tree as data, written by MachineDemo.setup with
+system.tag.configure, so importing the project is the whole install.
+Config/ holds the machine geometry, Robot is an instance of _types_/RobotArm,
+and the alarms are defined here (tree and alarms: docs/CONTRACT.md).
 """
 
 P = MachineDemo.plant
-
-
-# ---------------------------------------------------------------------------
-# builders
-# ---------------------------------------------------------------------------
 
 
 def _folder(name, tags, doc=None):
@@ -77,11 +40,7 @@ def _int(name, value, engHigh=None):
 
 
 def _geom(name, value, tip, unit="mm", lo=0.0, hi=5000.0):
-	"""One number that describes the machine rather than its state.
-
-	Int4 with a unit, a range and a tooltip, so the Designer's tag browser and
-	every binding that touches it say what it is without a comment beside it.
-	"""
+	"""An Int4 geometry tag with unit, range and tooltip."""
 	return _atomic(name, "Int4", int(value), {
 		"engUnit": unit, "engLow": float(lo), "engHigh": float(hi),
 		"formatString": "#,##0", "tooltip": tip})
@@ -97,10 +56,7 @@ def _float(name, value, unit=None, lo=0.0, hi=100.0, fmt="#,##0.0",
 	return _atomic(name, "Float8", float(value), extra)
 
 
-# Alarm associated data naming the CAD part an alarm belongs to. The CAD page
-# matches it against the part names of the model on screen. A plain key on the
-# alarm dict is how system.tag.configure takes associated data, and
-# event.get(CAD_PART) reads it back off queryStatus.
+# Associated data: a plain key on the alarm dict; event.get(CAD_PART) reads it back.
 CAD_PART = "CadPart"
 
 # alarm name -> UR5 sample part (the STL file names in the cad resource)
@@ -112,12 +68,8 @@ CAD_PARTS = {
 
 
 def _digital(name, display, priority, notes, setpoint=True):
-	"""An alarm that fires when a boolean equals `setpoint`.
-
-	No on-delay: see the module docstring. A digital fault on a machine is true
-	the instant the PLC says so, and an operator who has to wait for it stops
-	trusting the screen.
-	"""
+	"""An Equality alarm, with no on-delay, that fires when a boolean equals `setpoint`."""
+	# On-delays count real seconds, so a sped-up sim would outrun any useful one.
 	a = {"name": name, "mode": "Equality", "priority": priority,
 	     "displayPath": display, "ackMode": "Manual", "notes": notes,
 	     "setpointA": bool(setpoint)}
@@ -133,11 +85,6 @@ def _below(name, display, priority, notes, setpoint, deadband, onDelay=2):
 	        "timeOnDelaySeconds": onDelay}
 
 
-# ---------------------------------------------------------------------------
-# the tree
-# ---------------------------------------------------------------------------
-
-
 def _line():
 	return _folder("Line", [
 		_bool("Running", True),
@@ -148,16 +95,10 @@ def _line():
 		_bool("SimEnabled", True),
 		_float("SimSpeed", 1.0, "x", 0.25, 10.0, "#,##0.00"),
 		_int("ShiftTarget", 1800),
-		# Which 8-hour shift CasesTotal is counting. The sim zeroes the total
-		# when this changes, so "cases this shift" means it. Persisted rather
-		# than held in module state, for the same reason the pallet counts are:
-		# a project scan drops the globals and the demo has to survive one.
+		# 8-hour shift CasesTotal counts; a tag, not module state, so it survives a project scan.
 		_int("ShiftIndex", -1),
-		# The alarm journal the Alarms screen reads. A tag rather than a
-		# constant in the view because the answer is per-EDITION: this demo's
-		# own profile everywhere else, Edge's single unremovable EdgeJournal
-		# on Edge. MachineDemo.setup writes it; a view bound to the wrong
-		# profile name shows an empty history and no error.
+		# Journal for the Alarms screen, set by setup per edition (EdgeJournal on Edge).
+		# A wrong name shows an empty history and no error.
 		_str("JournalName", ""),
 	])
 
@@ -202,20 +143,6 @@ def _safety():
 			550.0, 20.0)]),
 	])
 
-
-# ---------------------------------------------------------------------------
-# the robot, as a UDT
-# ---------------------------------------------------------------------------
-# A palletising cell has arms, plural. Written as a folder of nineteen loose
-# tags, a second arm is nineteen more tags to copy, nineteen more paths to get
-# right and an alarm whose notes have to be edited in two places. Written as a
-# TYPE, it is one instance and the alarm is defined once.
-#
-# The members are named EXACTLY as the folder's tags were, so every path the
-# rest of the demo already uses - [MachineDemo]Robot/J2_deg and the other
-# eighteen - keeps working. Nothing in the simulator, the screens or the 3D
-# page changed for this.
-
 ROBOT_TYPE = "RobotArm"
 
 ROBOT_TYPE_DOC = (
@@ -239,12 +166,7 @@ def _robotMembers():
 		_float("Lift_mm", 620.0, "mm", 0.0, 1200.0, "#,##0"),
 		_bool("GripperClosed", False),
 		_float("Vacuum_kPa", 0.0, "kPa", -80.0, 0.0, "#,##0.0"),
-		# Hold-to-run jog on the lift axis. Momentary bits: the HMI sets one
-		# while a finger is on the button and the SIMULATOR owns the motion,
-		# the same split a real machine has between the panel and the PLC. A
-		# screen that moved the axis itself would keep moving it after the
-		# interlock dropped, which is the whole reason machines are not built
-		# that way.
+		# Hold-to-run momentary bits: the HMI sets them, the simulator owns the motion.
 		_bool("JogUp", False),
 		_bool("JogDown", False),
 		_float("LiftTarget_mm", 620.0, "mm", 0.0, 1200.0, "#,##0"),
@@ -266,16 +188,7 @@ def _robotMembers():
 
 
 def _robotType():
-	"""The UDT definition, as system.tag.configure() wants it under _types_.
-
-	Verified against the gateway rather than guessed: a UdtType node is a
-	`tags` list of ordinary AtomicTag dicts, and everything the members carry -
-	engineering range, unit, format, documentation, ALARMS - is inherited by
-	each instance and reads back on the instance's own member path. That last
-	part is the one worth proving: the demo's alarms live on Robot/Fault, and
-	an alarm that stopped being visible at that path would be an alarm nobody
-	could see raise.
-	"""
+	"""The RobotArm UDT definition, as system.tag.configure() wants it under _types_."""
 	return {"name": ROBOT_TYPE, "tagType": "UdtType",
 	        "documentation": ROBOT_TYPE_DOC,
 	        "tags": _robotMembers()}
@@ -286,14 +199,12 @@ def types():
 	return [_robotType()]
 
 
-# typeId -> the function that lists that type's members. counts() and paths()
-# use it to see THROUGH an instance, so the tree still measures the same 97
-# tags it did when the robot was a folder.
+# typeId -> member list, so counts() and paths() can see through an instance.
 TYPE_MEMBERS = {ROBOT_TYPE: _robotMembers}
 
 
 def _robot():
-	"""The instance. No member overrides - the type is the whole definition."""
+	"""The Robot instance of RobotArm, with no member overrides."""
 	return {"name": "Robot", "tagType": "UdtInstance", "typeId": ROBOT_TYPE,
 	        "documentation": ROBOT_INSTANCE_DOC}
 
@@ -301,10 +212,7 @@ def _robot():
 def _station(n):
 	return _folder("Station%d" % n, [
 		_bool("Present", True),
-		# Ranged for the biggest pattern the Config tags allow, not for the
-		# default one: the geometry is live now, so a range pinned to today's
-		# 60 cases would be exceeded the moment anyone chose a denser pattern,
-		# and a bar bound to it would sit hard against its own end stop.
+		# Ranged for the largest pattern Config allows, not the default one.
 		_int("CasesPlaced", 0, 300),
 		_int("Layer", 0, 20),
 		_bool("Complete", False),
@@ -355,29 +263,7 @@ CONFIG_DOC = ("Machine geometry. Change these for a different machine: the "
 
 
 def _config():
-	"""The machine's dimensions, as tags rather than as constants.
-
-	This is the difference between a demo and a machine builder's HMI. A case
-	size buried in a JavaScript file is a number only the person who wrote the
-	page can change; the same number on a tag is one an application engineer
-	changes from the Designer, on a machine that is running, and watches the
-	3D cell redraw AND the arm start placing to the new pattern. The next
-	machine stacks 350 mm cases on a Euro pallet - that is fifteen tag values,
-	not a source edit, and since 03/09/2026 that sentence is true of the
-	simulator too, not only of the picture.
-
-	The defaults come from MachineDemo.plant.GEOMETRY, the one list that the
-	API publishes from and the simulator derives from - a default typed here
-	as well would be a second copy.
-
-	Int4 millimetres throughout, because a machine drawing is in whole
-	millimetres and a float invites a geometry that is 299.9999 wide.
-
-	Robot LINK lengths are deliberately NOT here: they are the arm, not the
-	job. The simulator's inverse kinematics solves against them and the 3D
-	page draws the same two links; the reach report says whether THIS arm can
-	build THIS pattern, which is the question a bigger pallet actually raises.
-	"""
+	"""The Config folder: machine dimensions as Int4 mm tags, defaults from plant.GEOMETRY."""
 	D = P.GEOMETRY_DEFAULT
 	return _folder("Config", [
 		_geom("CaseW_mm", D["caseW_mm"],
@@ -457,10 +343,8 @@ def _faults():
 	])
 
 
-# Simulated part alarms for the CAD screen: a pool of slots, each a real alarm
-# whose CadPart and priority are BOUND to sibling tags. A bound alarm property
-# is read when the alarm goes active and the standing event keeps that value,
-# so a raise writes Part and Priority first and Active last (MachineDemo.cad).
+# CAD screen alarm slots: bound alarm properties are read once at activation,
+# so cad.simRaise writes Part and Priority before Active.
 CAD_SIM_SLOTS = 4
 PRIORITIES = ["Diagnostic", "Low", "Medium", "High", "Critical"]
 
@@ -485,31 +369,14 @@ def _cadSim():
 
 
 def tags():
-	"""The demo's top-level nodes, as system.tag.configure() expects them.
-
-	Eight folders and one UDT instance. `types()` must be written into
-	[<provider>]_types_ BEFORE this list goes into the provider root, or the
-	Robot instance has no definition to resolve.
-	"""
+	"""The demo's top-level nodes, as system.tag.configure() expects them."""
+	# Write types() into _types_ first, or the Robot instance has no definition.
 	return [_config(), _line(), _safety(), _robot(), _pallet(), _conveyor(),
 	        _zones(), _faults(), _cadSim()]
 
 
-# ---------------------------------------------------------------------------
-# counts, derived rather than remembered
-# ---------------------------------------------------------------------------
-# Every sentence in the project that says how big this cell is reads these.
-# A count typed into prose is a count that is wrong the next time a tag moves.
-
-
 def _members(node):
-	"""What is UNDER a node - looking through a UDT instance to its type.
-
-	An instance carries no `tags` of its own here (the type is the whole
-	definition), so a walker that only reads `tags` would count the robot as
-	zero tags and quietly report a tree 19 tags smaller than the one on the
-	gateway.
-	"""
+	"""Child nodes of a node, from the type for a UDT instance; None for an atomic tag."""
 	tt = node.get("tagType")
 	if tt == "Folder" or tt == "UdtType":
 		return node.get("tags") or []
@@ -533,6 +400,7 @@ def _walk(nodes):
 
 
 def counts():
+	"""Atomic tag, alarm, top-level node and UDT counts for the tree."""
 	atoms = list(_walk(tags()))
 	alarms = 0
 	for a in atoms:
@@ -542,11 +410,7 @@ def counts():
 
 
 def paths():
-	"""Every atomic tag path in the tree, provider-relative, in tree order.
-
-	MachineDemo.setup uses it to prove the whole tree landed rather than just
-	the first folder, which is what a half-written provider looks like.
-	"""
+	"""Every atomic tag path in the tree, provider-relative, in tree order."""
 	out = []
 
 	def walk(nodes, prefix):

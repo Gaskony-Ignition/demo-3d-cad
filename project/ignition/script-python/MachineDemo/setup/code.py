@@ -1,54 +1,7 @@
-"""
-MachineDemo.setup - stand the whole cell up on a gateway, from the project.
-
-Importing the project is the entire install. The things the cell needs that a
-project export cannot carry - its tag provider, and on a gateway that can have
-one, a database connection and an alarm journal - are gateway CONFIG
-resources, and 8.3's system.config creates them from here, live, with no file
-to place, no config scan and no restart.
-
-This demo argues for Ignition Edge Panel on a machine builder's small,
-single-panel machines, and Edge Panel has NO database connectivity at all - it
-is not merely discouraged, the module that provides it (SQL Bridge) is absent
-from the Edge build. So setup asks the gateway what it can actually do
-(_hasDatabaseModule, below) before it tries anything database-shaped:
-
-  - a gateway WITH SQL Bridge gets exactly what this demo always gave it - its
-    own SQLite connection and a DATASOURCE alarm journal writing into it.
-  - a gateway WITHOUT it (Edge Panel) gets no connection attempt at all, and
-    the alarm journal is configured as a LOCAL profile instead - Edge's own
-    internal alarm history, no datasource, no database anywhere. Alarms are
-    still journalled and the Alarms screen still has history to show; only
-    the *mechanism* changes.
-
-Both are the demo's OWN, named for it and shared with nothing. A demo that
-borrows the gateway's general purpose connection has its alarm history
-interleaved with every other project's, in a table whose retention belongs to
-somebody else.
-
-An existing gateway is UPGRADED by the same call. The robot arrived as a
-folder of loose tags and is now a UDT instance; run() converts it in place with
-system.tag.configure, keeping every tag path, and touches nothing outside this
-demo's own provider.
-
-    MachineDemo.setup.check()          # report on every item, change nothing
-    MachineDemo.setup.run()            # create whatever is missing
-    MachineDemo.setup.fix("tags")      # just one item
-
-and the same three from a terminal:
-
-    curl ".../system/webdev/<project>/admin?cmd=check"
-    curl ".../system/webdev/<project>/admin?cmd=setup"
-    curl ".../system/webdev/<project>/admin?cmd=fix&name=tags"
-
-<project> is whatever this project is called on the gateway - Machine_HMI_Demo
-for the standard build, the Edge gateway's own project name for the Edge one.
-
-EVERY CHECK IS INDEPENDENT AND NONE OF THEM STOPS AT THE FIRST FAILURE.
-"The provider exists but the tags are missing", "the tags are there but the
-alarms are not" and "everything is there but nothing is moving" need three
-different actions, and they look identical if you only ever see the first
-error.
+"""Stands the cell up on a gateway from the project, live through system.config:
+tag provider, tags and robot UDT, and where the edition allows, the demo's own
+SQLite connection and alarm journal. check() reports each item independently,
+fix(key) creates one, run() creates whatever is missing.
 """
 
 P = MachineDemo.plant
@@ -57,10 +10,7 @@ PROVIDER = P.PROVIDER
 LOG = system.util.getLogger("MachineDemo.setup")
 
 
-# The tag provider config, the same JSON the resource has on disk at
-# data/config/resources/core/ignition/tag-provider/<name>/config.json. It lives
-# HERE and nowhere else: a second copy as a file, for anyone who would rather
-# scan it in, is a definition that goes stale on one side without saying so.
+# Same JSON as tag-provider/<name>/config.json on disk; keep this the only copy.
 TAG_PROVIDER_CONFIG = {
 	"profile": {
 		"allowBackfill": False,
@@ -77,41 +27,16 @@ TAG_PROVIDER_CONFIG = {
 	},
 }
 
-# ---------------------------------------------------------------------------
-# The demo's OWN database connection and OWN alarm journal.
-#
-# Every demo owns its resources. Pointing the journal at a gateway's general
-# purpose connection and filtering the alarm screens by source only LOOKS like
-# isolation: the rows still interleave with every other project's in one
-# alarm_events table, and the retention belongs to somebody else. A cleanup on
-# the gateway this was built on found 169,320 rows in one shared table and had
-# to audit them per provider before it could safely delete any of them.
-#
-# Owning it costs nothing here because the connection is SQLite - a FILE beside
-# the gateway. There is no server to reach, no credential to hold and no config
-# scan to remember, so the demo still answers the customer's "and no database
-# connections" with a yes rather than an apology.
-
 DB = "MachineDemoDB"
 DB_FILE = "machine-hmi-demo.db"
 
-# journal_mode=WAL is not a tuning knob: the journal writes while a Perspective
-# session reads the same file for the alarm table, and rollback-journal SQLite
-# blocks the reader for the length of every write. busy_timeout then covers the
-# one case WAL does not - two writers - by waiting rather than failing.
-#
-# `${data}` is expanded by Ignition, not by us, and resolves to the gateway's
-# data directory on every platform, so the same string is right on Windows, on
-# Linux and inside the container image.
+# WAL so the alarm table can read while the journal writes; busy_timeout covers
+# two writers. ${data} is expanded by Ignition to the gateway's data directory.
 DB_URL = ("jdbc:sqlite:${data}/%s?journal_mode=WAL&busy_timeout=30000"
           % DB_FILE)
 
-# Ignition's own defaults for a new connection, with one change: poolMaxActive
-# 8 -> 4. Eight pooled connections onto one SQLite file is eight threads
-# contending for one write lock, and a demo has no business inventing a pool.
-# There is no `password` key because there is no password - `username` is empty
-# and the file is opened, not logged into - so the encrypt()-then-
-# createEmbeddedSecretConfig() dance does not apply and must not be faked.
+# Ignition's defaults except poolMaxActive 4: one SQLite file has one write lock.
+# No password key: SQLite opens a file, it does not log in.
 DB_CONFIG = {
 	"connectURL": DB_URL,
 	"connectionProps": "",
@@ -139,18 +64,12 @@ DB_CONFIG = {
 	"validationSleepTime": 10000,
 }
 
-# Ignition's own default table names, in a connection that holds nothing else.
-# That is the whole point: alone in this file, alarm_events is this demo's
-# alarm history and nobody else's, and it can be deleted by deleting a file.
 JOURNAL = PROVIDER
 JOURNAL_NAME_TAG = "Line/JournalName"
 JOURNAL_TABLE = "alarm_events"
 JOURNAL_DATA_TABLE = "alarm_event_data"
 
-# minPriority Diagnostic, not Low: the demo's injectable faults are the show,
-# and a journal that silently drops the quiet ones is a screen full of nothing
-# with no error anywhere. storeShelvedEvents so that shelving on the Alarms
-# page still leaves a record of what was shelved.
+# minPriority Diagnostic so no injected fault is silently left out of history.
 JOURNAL_CONFIG = {
 	"profile": {"queryOnly": False, "type": "DATASOURCE"},
 	"settings": {
@@ -171,13 +90,7 @@ JOURNAL_CONFIG = {
 	},
 }
 
-# The no-database journal. Same dataFilters/eventData/events/pruning as
-# JOURNAL_CONFIG above - same alarms, same priority floor, same retention -
-# minus the two things only a database can back: "advanced" (the table
-# names) and "datasource". Confirmed against a live gateway, 03/09/2026: a
-# real system.config.create with exactly this shape for typeId "alarm-journal"
-# is accepted and reads back byte-for-byte unchanged - no extra fields get
-# filled in, none of these get dropped.
+# JOURNAL_CONFIG without "advanced" and "datasource", for a gateway with no database.
 JOURNAL_CONFIG_LOCAL = {
 	"profile": {"type": "LOCAL"},
 	"settings": {
@@ -193,88 +106,27 @@ JOURNAL_CONFIG_LOCAL = {
 }
 
 
-# Test-only override for _hasDatabaseModule(), below. None (the shipped
-# value) means "ask the gateway for real". True/False forces the answer so
-# the no-database branch can be driven and its consequences proven
-# deterministically on a gateway that DOES have SQL Bridge - which is the
-# only kind of gateway this was ever tested against. Never leave this at
-# anything but None outside of a scratch diagnostic session; nothing in this
-# module sets it.
+# Test-only: True/False forces _hasDatabaseModule's answer. Ship as None.
 _FORCE_NO_DB = None
 
 
 def _hasDatabaseModule():
-	"""Can this gateway create a database connection at all?
-
-	The positive, structural answer, not a license flag and not a guess:
-	whether ('ignition', 'database-connection') is among the resource types
-	system.config.getResourceTypes() knows about. That type - and
-	'database-driver' and 'database-translator' alongside it - is registered
-	by the SQL Bridge gateway module (com.inductiveautomation...sqlbridge),
-	which also backs every system.db.* call. Ignition Edge Panel does not
-	ship SQL Bridge at all: it is not disabled by license, the module is
-	simply absent from the Edge build, so the type is never registered there
-	and this answers False with nothing to catch.
-
-	Measured on THIS (STANDARD) gateway, 03/09/2026: getResourceTypes()
-	returns 57 (module, type) pairs, including ('ignition',
-	'database-connection'), ('ignition', 'database-driver') and ('ignition',
-	'database-translator'); the installed-module list
-	(ModuleManager.getModuleInfoAsJson()) independently confirms SQL Bridge
-	itself is ACTIVE. ('ignition', 'alarm-journal') is ALSO in that list
-	regardless - it is registered by the gateway core, not SQL Bridge,
-	because its LOCAL flavour (JOURNAL_CONFIG_LOCAL, above) needs no database
-	and was proven live on this same gateway: system.config.create with
-	profile.type "LOCAL" was accepted and read back unchanged, with no
-	datasource anywhere in it.
-
-	This project has never run against a real Edge Panel gateway - proving
-	Edge itself lacks SQL Bridge is out of scope here, and is the documented,
-	reasoned answer rather than a measured one. _FORCE_NO_DB is what lets the
-	no-database branch be exercised and its results proven anyway, on this
-	standard gateway, without guessing at what setup would do on one.
-	"""
+	"""True if the gateway registers the database-connection type (SQL Bridge; absent on Edge)."""
 	if _FORCE_NO_DB is not None:
 		return not _FORCE_NO_DB
 	from java.lang import Throwable as JThrowable
 	try:
 		return ("ignition", "database-connection") in system.config.getResourceTypes()
 	except (JThrowable, Exception):
-		# getResourceTypes() itself is not documented anywhere we have handy,
-		# so if some future gateway build does not carry it, do not risk a
-		# write from inside what must stay a read-only check - default to
-		# "no database" rather than assume a capability nothing confirmed.
+		# Undocumented call: if it is missing, assume no database rather than risk a write.
 		LOG.warn("could not determine database capability - "
 		         "assuming none (see _hasDatabaseModule)")
 		return False
 
 
 def _isEdgeGateway():
-	"""Is this an Ignition Edge gateway?
-
-	The same structural question as _hasDatabaseModule, asked of the ONE type
-	only Edge registers: ('ignition', 'edge-sync-settings').
-
-	It is NOT 'edge-system-properties'. That was the first answer here and it
-	was wrong: a standard gateway registers it too, so every Edge branch in
-	this module ran on standard - the journal was never created there and the
-	provider row gave Edge advice on a gateway that is not one. Caught
-	09/09/2026 only by installing the standard build on a standard gateway
-	after the Edge one passed.
-
-	Measured the same day by diffing both editions on 8.3.8:
-
-	    standard  60 types    edge  55 types
-	    only on standard  database-connection, database-driver,
-	                      database-translator, cobranding,
-	                      sfc/chart-settings, sip-notification/script-settings
-	    only on Edge      edge-sync-settings
-
-	'alarm-journal' is registered on Edge too, so the journal cannot be
-	detected this way either - the type is there and the CREATE is what gets
-	refused, with java.lang.UnsupportedOperationException("Cannot create Alarm
-	Journal on Edge").
-	"""
+	"""True on Ignition Edge, detected by the Edge-only edge-sync-settings resource type."""
+	# Not edge-system-properties: a standard gateway registers that too.
 	from java.lang import Throwable as JThrowable
 	try:
 		return ("ignition", "edge-sync-settings") in \
@@ -284,14 +136,7 @@ def _isEdgeGateway():
 
 
 def journalName():
-	"""The alarm journal this gateway actually keeps history in.
-
-	Edge has exactly one, made by the platform (EdgeJournal, unless a site
-	renamed it) and unremovable; everywhere else it is this demo's own,
-	named for it. The Alarms screen binds its table to this rather than to a
-	constant, because a journal table pointed at a profile that does not
-	exist shows an empty history and no error.
-	"""
+	"""Return the alarm journal name to use: Edge's own journal on Edge, else this demo's JOURNAL."""
 	if not _isEdgeGateway():
 		return JOURNAL
 	have = _names("alarm-journal")
@@ -300,13 +145,7 @@ def journalName():
 	return have[0] if have else JOURNAL
 
 
-# One tag from each end of the tree and several from the middle. Reading all of
-# them is how "the tags are there" is told apart from "the first folder wrote
-# and then it failed", which is what a half-configured provider looks like and
-# reports no error anywhere.
-# Kept as the sample the STATUS reply shows when it wants a handful of
-# representative tags. The tag CHECK no longer uses it - it reads every path
-# the design declares, for the reason in _tagsCheck.
+# A representative tag sample; nothing in the project reads it (_tagsCheck reads every path).
 PROBE_TAGS = ["Config/CaseW_mm", "Line/SimEnabled", "Safety/GuardsClosed",
               "Robot/J1_deg", "Robot/LiftTarget_mm", "Robot/JogUp",
               "Pallet/Station2/CasesPlaced", "Conveyor/PE_Clear",
@@ -322,13 +161,9 @@ ALARM_TAGS = (["Safety/EStopOK", "Safety/GuardsClosed",
 
 
 def _resource(typeId, name):
-	"""A config resource, or None.
-
-	getResource RAISES when the resource is missing rather than returning None,
-	and it raises a java.lang.Throwable - which in Jython is NOT an Exception,
-	so a plain `except Exception` walks straight past it and the caller gets a
-	stack trace instead of an answer.
-	"""
+	"""A config resource, or None if it is missing."""
+	# getResource raises a java.lang.Throwable when missing; in Jython
+	# `except Exception` does not catch it.
 	from java.lang import Throwable as JThrowable
 	try:
 		return system.config.getResource(moduleId="ignition", typeId=typeId,
@@ -338,21 +173,12 @@ def _resource(typeId, name):
 
 
 def _config(res):
-	"""A resource's config as a plain dict.
-
-	getConfig() hands back live wrapper objects; the round trip through JSON is
-	what makes them ordinary Python to read and compare.
-	"""
+	"""A resource's config as plain Python, via a JSON round trip of getConfig()'s wrappers."""
 	return system.util.jsonDecode(system.util.jsonEncode(res.getConfig()))
 
 
 def _names(typeId):
-	"""Every config resource of a type on this gateway, by name.
-
-	Used only to turn "it did not answer" into a sentence naming what this
-	gateway does have, which is almost always the answer and is invisible from
-	inside the project otherwise.
-	"""
+	"""Sorted names of every config resource of typeId on this gateway; [] on error."""
 	from java.lang import Throwable as JThrowable
 	try:
 		return sorted([unicode(r.getName()) for r in
@@ -363,11 +189,8 @@ def _names(typeId):
 
 
 def _upsert(typeId, name, config, description):
-	"""Create it, or replace it if it is already there.
-
-	`replace` needs the CURRENT signature - it is optimistic concurrency, and
-	without it the call is refused rather than applied.
-	"""
+	"""Create or replace a config resource; return "created" or "updated"."""
+	# replace() is refused without the resource's current signature.
 	existing = _resource(typeId, name)
 	if existing is None:
 		system.config.create(moduleId="ignition", typeId=typeId, name=name,
@@ -380,22 +203,9 @@ def _upsert(typeId, name, config, description):
 	return "updated"
 
 
-# ---------------------------------------------------------------------------
-# tag provider
-# ---------------------------------------------------------------------------
-
-
 def _providerCheck():
-	"""The provider exists AND is running.
-
-	The config resource existing is not enough. Edge permits exactly one
-	realtime provider, and a second one written through system.config is
-	accepted as a resource and then refused at startup - "Unable to start
-	provider: 'MachineDemo', an Edge Gateway Provider is already registered"
-	in the log, nothing raised at the caller. This row read green while all
-	113 tags failed with Bad_NotFound underneath it, which is the one thing
-	it exists to prevent. Browsing is what tells them apart.
-	"""
+	"""(ok, detail): the provider resource exists and browses."""
+	# Edge accepts a second provider resource then refuses to start it; only a browse shows that.
 	if _resource("tag-provider", PROVIDER) is None:
 		if _isEdgeGateway():
 			return False, (u"tag provider '%s' does not exist. Edge keeps "
@@ -419,8 +229,7 @@ def _providerCheck():
 
 def _providerFix():
 	if _isEdgeGateway() and _resource("tag-provider", PROVIDER) is None:
-		# Writing one here would be accepted and then never started, leaving
-		# the row green and every tag write failing underneath it.
+		# Edge would accept a second provider and never start it.
 		return (u"not created - Edge permits one realtime provider. Set "
 		        u"Config -> Ignition Edge -> Tag Provider to '%s' and save; "
 		        u"the rename is live, no restart." % PROVIDER)
@@ -430,19 +239,8 @@ def _providerFix():
 	return u"tag provider '%s' %s" % (PROVIDER, what)
 
 
-# ---------------------------------------------------------------------------
-# tags
-# ---------------------------------------------------------------------------
-
-
 def _tagsCheck():
-	"""Prove every tag in the design is actually in the provider.
-
-	Reads every path the design declares from the gateway and reports how many
-	came back, so the count checked against is always the gateway's, never the
-	design's - a check that counts the thing it is checking against cannot fail,
-	and a probe of only some paths misses a tag silently left uncreated.
-	"""
+	"""(ok, detail): every path in MachineDemo.tagdata reads Good from the provider."""
 	from java.lang import Throwable as JThrowable
 	paths = MachineDemo.tagdata.paths()
 	try:
@@ -458,8 +256,6 @@ def _tagsCheck():
 		if not good:
 			bad.append(path)
 	if bad:
-		# Name a few rather than all of them - a provider that is missing
-		# everything would otherwise fill the page.
 		shown = u", ".join(bad[:6])
 		if len(bad) > 6:
 			shown = u"%s and %d more" % (shown, len(bad) - 6)
@@ -471,13 +267,8 @@ def _tagsCheck():
 
 
 def _bad(qualities):
-	"""The quality codes system.tag.configure hands back that are NOT good.
-
-	configure does not raise when it half-writes: it answers one quality per
-	node it was given, and a tree whose Robot node came back Bad because its
-	UDT definition was not there yet looks, from the return value nobody reads,
-	exactly like a tree that wrote. Read them.
-	"""
+	"""The non-Good quality codes from a system.tag.configure result, as text."""
+	# configure does not raise on a partial write; the qualities are the only sign.
 	out = []
 	for q in (qualities or []):
 		try:
@@ -495,14 +286,8 @@ def _bad(qualities):
 
 
 def _writeTypes():
-	"""Put the UDT definitions in [<provider>]_types_.
-
-	The base path is the _types_ folder itself and the node is an ordinary
-	dict with tagType "UdtType" - the members are the same AtomicTag dicts a
-	folder would hold, alarms included. This has to happen BEFORE the provider
-	root is written, because the Robot node in that tree is an INSTANCE and an
-	instance with no definition to resolve is refused.
-	"""
+	"""Write the UDT definitions into [<provider>]_types_; return how many, raise if refused."""
+	# Must run before the provider root: the Robot instance is refused without its definition.
 	defs = MachineDemo.tagdata.types()
 	q = system.tag.configure(u"[%s]_types_" % PROVIDER, defs, u"o")
 	bad = _bad(q)
@@ -512,26 +297,10 @@ def _writeTypes():
 
 
 def _tagsFix():
-	"""Write the cell's UDT definitions and its tags into the provider.
-
-	collisionPolicy "o" - overwrite. The tree is generated from the project and
-	the project is its only source, so a rerun should put the gateway back to
-	the shipped design rather than merge with whatever is there. Every value is
-	simulated twice a second anyway, so nothing of anyone's is lost.
-
-	Overwrite is also what UPGRADES a gateway that already has this demo. On
-	those, `Robot` is a plain folder of nineteen tags. Writing a UdtInstance
-	over it with "o" converts it in place: same path, same member names, and
-	the members that are no longer part of the definition are dropped rather
-	than left behind. There is no delete step, no restart, and nothing outside
-	this provider is touched - measured on the live gateway, not assumed.
-	"""
+	"""Overwrite the UDT definitions and tag tree in the provider; return a one-line account."""
 	from java.lang import Thread as JThread
 	last = None
-	# A provider created seconds ago is registered but not necessarily
-	# accepting writes yet, and the failure is a bare throwable rather than
-	# anything that says "try again". Three goes over four seconds; on a
-	# provider that was already there the first one succeeds.
+	# A just-created provider may not accept writes yet and fails with a bare throwable.
 	for _attempt in range(3):
 		try:
 			nTypes = _writeTypes()
@@ -557,11 +326,7 @@ def _tagsFix():
 
 
 def _robotCarriesValues():
-	"""Do the robot's member tags actually hold a value?
-
-	The one question that separates a working UDT instance from the broken one
-	below, and it is not answerable from the configuration - only from a read.
-	"""
+	"""True if Robot/J1_deg reads Good, i.e. the robot instance's members are live."""
 	from java.lang import Throwable as JThrowable
 	try:
 		q = system.tag.readBlocking([P.tag("Robot/J1_deg")])[0]
@@ -571,12 +336,7 @@ def _robotCarriesValues():
 
 
 def _settle(seconds=6):
-	"""Wait for the robot's members to start carrying values after a write.
-
-	A tag tree comes back from system.tag.configure before its memory tags
-	have their initial value, so the row underneath a successful fix would
-	otherwise report the tags missing about the tags it had just written.
-	"""
+	"""Wait up to seconds for the robot's members to read Good after configure returns."""
 	from java.lang import Thread as JThread
 	for _i in range(int(seconds * 2)):
 		if _robotCarriesValues():
@@ -586,23 +346,9 @@ def _settle(seconds=6):
 
 
 def _clearStaleRobot():
-	"""Delete whatever is standing where the Robot INSTANCE goes, if it must.
-
-	This is the whole upgrade path, and it is here because of a failure that
-	reports success. system.tag.configure with collision policy "o" will write
-	a UdtInstance straight over an existing FOLDER of the same name. It answers
-	Good. Afterwards the node browses as a UdtInstance, getConfiguration
-	returns all nineteen inherited members with their engineering ranges and
-	their alarms, and `?cmd=check` is green - and every one of those members
-	sits at Uncertain_InitialValue for ever and answers Bad_Unsupported to
-	every write. The tag tree is perfect and the machine is dead, with nothing
-	in any log. Measured on this gateway, 02/09/2026.
-
-	Deleting the node first and creating the instance fresh gives members that
-	read Good straight away. Overwriting an instance that is already HEALTHY is
-	fine - also measured - so this deletes only when it has to: once on a
-	gateway being upgraded, and never again.
-	"""
+	"""Delete the Robot node unless it is a live instance; return what was replaced, or None."""
+	# An instance written over a folder answers Good but its members never carry
+	# a value (docs/CONTRACT.md, "The upgrade trap").
 	kind = _nodeType("Robot")
 	if kind is None:
 		return None
@@ -615,11 +361,6 @@ def _clearStaleRobot():
 		return u"replaced a Robot instance whose members carried no value"
 	return u"replaced the old Robot %s with an instance of '%s'" % (
 		kind.lower() if kind else u"node", MachineDemo.tagdata.ROBOT_TYPE)
-
-
-# ---------------------------------------------------------------------------
-# the robot UDT
-# ---------------------------------------------------------------------------
 
 
 def _nodeType(path):
@@ -638,13 +379,7 @@ def _nodeType(path):
 
 
 def _udtCheck():
-	"""The definition exists AND the robot is an instance of it.
-
-	Two questions again, and they fail apart. A gateway that was set up before
-	the robot became a UDT has the definition (this fix wrote it) and a plain
-	FOLDER at Robot, which reads identically on every screen - the difference
-	is invisible everywhere except here and in the Designer.
-	"""
+	"""(ok, detail): the robot UDT has every member and Robot is a live instance of it."""
 	typeName = MachineDemo.tagdata.ROBOT_TYPE
 	typePath = u"_types_/%s" % typeName
 	if _nodeType(typePath) != u"UdtType":
@@ -665,9 +400,6 @@ def _udtCheck():
 	if kind != u"UdtInstance":
 		return False, (u"[%s]Robot is a %s, not an instance of '%s'"
 		               % (PROVIDER, kind or u"nothing", typeName))
-	# Being an instance is not enough. An instance written over a folder is an
-	# instance in every way except that its members never carry a value, so
-	# this row asks the only question that tells them apart.
 	if not _robotCarriesValues():
 		return False, (u"[%s]Robot is an instance of '%s' but its members "
 		               u"carry no value - it was written over the old folder "
@@ -677,22 +409,12 @@ def _udtCheck():
 	              u"of it" % (typeName, len(members), PROVIDER))
 
 
-# ---------------------------------------------------------------------------
-# the machine's geometry
-# ---------------------------------------------------------------------------
-
-
 def _configPaths():
 	return [p for p in MachineDemo.tagdata.paths() if p.startswith("Config/")]
 
 
 def _configCheck():
-	"""Every geometry tag readable, with the values a reader can sanity-check.
-
-	The detail line quotes the case and the pallet on purpose: "15 tags exist"
-	and "15 tags exist and the case is 300 x 250 x 220" are different amounts
-	of proof, and the second one costs nothing.
-	"""
+	"""(ok, detail): every Config tag reads, with the case and pallet sizes quoted."""
 	paths = _configPaths()
 	if not paths:
 		return False, u"the project carries no Config tags"
@@ -709,11 +431,6 @@ def _configCheck():
 	                 got.get("Config/PalletD_mm"),
 	                 got.get("Config/CasesPerLayer"),
 	                 got.get("Config/Layers")))
-
-
-# ---------------------------------------------------------------------------
-# alarms
-# ---------------------------------------------------------------------------
 
 
 def _alarmsOn(path):
@@ -733,18 +450,12 @@ def _alarmsOn(path):
 
 
 def _alarmsCheck():
-	"""The alarms are the demo, so prove they landed on the TAGS.
-
-	A tag tree that wrote its values but dropped its alarm definitions reads
-	perfectly on every screen and raises nothing, ever. That failure has no
-	other symptom.
-	"""
+	"""(ok, detail): every ALARM_TAGS tag carries alarms and each tagdata.CAD_PARTS alarm has its part."""
 	missing = [p for p in ALARM_TAGS if not _alarmsOn(p)]
 	if missing:
 		return False, u"no alarm definition on: %s" % u", ".join(missing)
 	total = sum(len(_alarmsOn(p)) for p in ALARM_TAGS)
-	# A gateway set up before 1.19.0 has every alarm and no part links; the CAD
-	# page's alarm panel then stays empty with nothing to say why.
+	# Without part links the CAD page's alarm panel stays empty with no error.
 	want = MachineDemo.tagdata.CAD_PARTS
 	linked = _cadLinks()
 	unlinked = [n for n in sorted(want) if linked.get(n) != want[n]]
@@ -776,23 +487,8 @@ def _cadLinks():
 	return out
 
 
-# ---------------------------------------------------------------------------
-# the demo's own database connection
-# ---------------------------------------------------------------------------
-
-
 def _databaseCheck():
-	"""The connection exists AND answers - or this edition cannot have one.
-
-	Three questions, in order, because they fail apart. First: can this
-	gateway have a database connection at all (_hasDatabaseModule) - on an
-	edition that cannot, this row reports green and "not applicable" rather
-	than red "missing", because there is nothing to be missing. Only on a
-	gateway that CAN have one do the other two apply: the resource can be
-	there while the pool has not started - a connection created seconds ago
-	is registered before it has opened the file - and a query is the only
-	thing that tells the difference.
-	"""
+	"""(ok, detail): the connection exists and answers SELECT 1; green "not applicable" without SQL Bridge."""
 	if not _hasDatabaseModule():
 		return True, (u"not applicable on this edition - no SQL Bridge "
 		              u"module, so no database connection is possible here. "
@@ -812,17 +508,7 @@ def _databaseCheck():
 
 
 def _databaseFix():
-	"""Make the demo's own SQLite connection - or skip it cleanly.
-
-	Nothing to fill in on a gateway that can have one: no host, no port, no
-	credential. The driver creates the file on first use if it is not there.
-
-	On a gateway with no SQL Bridge module, there is nothing this CAN create -
-	system.config would refuse a database-connection resource type it never
-	registered - so this is a clean, reported no-op rather than an attempt
-	that fails. _databaseCheck already reports that row green, so run() never
-	calls this in that case; it stays safe to call directly all the same.
-	"""
+	"""Upsert the SQLite connection and wait for it to answer; a reported no-op without SQL Bridge."""
 	if not _hasDatabaseModule():
 		return (u"skipped - this edition has no SQL Bridge module, so no "
 		        u"database connection is possible; nothing to create")
@@ -838,10 +524,7 @@ def _databaseFix():
 	               "the gateway, holding this demo's alarm journal and "
 	               "nothing else")
 
-	# Creating the RESOURCE and having a live pooled CONNECTION are not the
-	# same moment, and the gap is long enough that the row underneath this one
-	# would otherwise say "created" and "did not answer" about the same
-	# connection in the same second.
+	# The pool opens some seconds after the resource is created.
 	from java.lang import Thread as JThread
 	for _attempt in range(15):
 		ok, _detail = _databaseCheck()
@@ -852,23 +535,9 @@ def _databaseFix():
 	        u"below in a moment" % (DB, what))
 
 
-# ---------------------------------------------------------------------------
-# the demo's own alarm journal
-# ---------------------------------------------------------------------------
-
-
 def _journalCheck():
-	"""The profile exists and is the right FLAVOUR for this edition.
-
-	Two different questions depending on what the gateway can do. With a
-	database: does the profile write to THIS demo's connection - pointing at
-	the wrong datasource is the failure worth naming, because a journal
-	profile writing somewhere else does not error, the alarm page just shows
-	a history that is somebody else's, or none at all, and nothing anywhere
-	says why. Without one: is the profile the LOCAL flavour Edge provides -
-	a profile left over from a database this edition no longer has (or never
-	had) journals nothing, silently, the same way.
-	"""
+	"""(ok, detail): the journal profile is the right type for this edition and the name tag matches."""
+	# A profile pointed at the wrong datasource raises nothing; the history is just wrong.
 	if _isEdgeGateway():
 		if not _names("alarm-journal"):
 			return False, u"this Edge gateway has no alarm journal at all"
@@ -922,11 +591,7 @@ def _journalCheck():
 
 
 def _journalTagCheck():
-	"""The Alarms screen's journal-name tag agrees with this gateway.
-
-	The screen binds its journal table to this tag, so a stale value is an
-	empty history with nothing anywhere saying why.
-	"""
+	"""(ok, detail): JOURNAL_NAME_TAG, which the Alarms screen's journal table binds to, equals journalName()."""
 	want = journalName()
 	qv = system.tag.readBlocking(["[%s]%s" % (PROVIDER, JOURNAL_NAME_TAG)])[0]
 	have = unicode(qv.value) if qv.quality.isGood() else None
@@ -938,18 +603,10 @@ def _journalTagCheck():
 
 
 def _journalFix():
-	"""Upsert the alarm journal profile in the flavour this edition needs.
-
-	Same resource name either way (JOURNAL == the provider name) - only the
-	config differs, and _upsert doesn't care that a DATASOURCE profile is
-	being replaced by a LOCAL one or vice versa, it just needs the current
-	signature to replace against.
-	"""
+	"""Write the journal-name tag and upsert the journal profile (DATASOURCE or LOCAL); none on Edge."""
 	_journalTagFix()
 	if _isEdgeGateway():
-		# system.config.create for typeId "alarm-journal" throws
-		# java.lang.UnsupportedOperationException("Cannot create Alarm Journal
-		# on Edge") - measured 09/09/2026. There is nothing to create.
+		# Edge refuses to create an alarm journal (UnsupportedOperationException).
 		return u"alarm journal '%s' is Edge's own and already exists - " \
 		       u"nothing created, %s written" % (journalName(),
 		                                         JOURNAL_NAME_TAG)
@@ -974,21 +631,9 @@ def _journalTagFix():
 	                         [journalName()])
 
 
-# ---------------------------------------------------------------------------
-# the simulation
-# ---------------------------------------------------------------------------
-
-
 def _simCheck():
-	"""Is the cell actually running?
-
-	The timer script is a project resource, so it is always THERE. What this
-	asks is whether it has TICKED - and the only answer that cannot be faked is
-	watching the arm move: read three joints, wait, read them again. A tick
-	counter in the simulator's own module would be cheaper, but it is only
-	visible if this code and the timer happen to share a script manager, and
-	"the sim is running" is not a question worth a maybe.
-	"""
+	"""(ok, detail): the sim is enabled and the robot and air-pressure tags change over 1.4 s."""
+	# A tick counter in MachineDemo.sim is not visible unless both share a script manager.
 	from java.lang import Thread as JThread
 	v = P.readDict({"enabled": "Line/SimEnabled", "speed": "Line/SimSpeed",
 	                "state": "Robot/State"})
@@ -1021,13 +666,8 @@ def _simFix():
 	return u"simulation enabled at 1x with every fault cleared"
 
 
-# ---------------------------------------------------------------------------
-# the items
-# ---------------------------------------------------------------------------
-# (key, title, check, fix, why). check returns (ok, detail); fix returns a
-# one-line account of what it did, or raises.
-
 def _items():
+	"""Setup items in install order: (key, title, check, fix, why)."""
 	c = MachineDemo.tagdata.counts()
 	return [
 		("tagProvider", "Tag provider", _providerCheck, _providerFix,
@@ -1083,6 +723,7 @@ def _items():
 
 
 def items():
+	"""Setup items in install order as (key, title, checkFn, fixFn, why) tuples."""
 	return _items()
 
 
@@ -1091,11 +732,9 @@ FIXABLE = ["tagProvider", "tags", "udt", "config", "alarms", "database",
 
 
 def check():
-	"""Every item's state, in install order. Changes nothing.
+	"""Report every setup item's state, each checked independently; changes nothing.
 
-	Returns {"items": [...], "ok": bool, "version": ...} where each item is
-	{key, title, ok, detail, fixable, why} - one row of a Setup screen per
-	item.
+	Returns: {items: [{key, title, ok, detail, fixable, why}], ok, version, provider, cell, counts}.
 	"""
 	rows = []
 	for key, title, checkFn, fixFn, why in _items():
@@ -1119,7 +758,7 @@ def check():
 
 
 def fix(key):
-	"""Create one item. Returns a one-line account, or raises."""
+	"""Run one item's fix; return a one-line account, or raise."""
 	for k, _title, _checkFn, fixFn, _why in _items():
 		if k != key:
 			continue
@@ -1131,14 +770,7 @@ def fix(key):
 
 
 def run():
-	"""Create everything that is missing, in order, and report.
-
-	Safe to run twice: every fix is an upsert or a no-op. Ordered as the
-	dependencies run - the provider before the tags that go in it, the tags
-	before the simulation that writes them - and a step that fails is recorded
-	and the next one still runs, because "the provider failed" must not hide
-	"and so did four other things".
-	"""
+	"""Fix every failing item in install order, carrying on past failures; return check() plus changed/errors."""
 	done, failed = [], []
 	for key, _title, checkFn, fixFn, _why in _items():
 		if fixFn is None:

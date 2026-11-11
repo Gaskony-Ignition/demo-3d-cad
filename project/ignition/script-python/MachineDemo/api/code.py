@@ -1,17 +1,7 @@
 """
-MachineDemo.api - the state snapshot, and the presenter's controls.
-
-`state()` is polled four times a second by the 3D cell page, so it is built the
-only way that can survive that: ONE system.tag.readBlocking of a path list that
-is computed once at module load, then plain indexing. No browsing, no
-per-property reads, no queries. The list and the response shape are frozen -
-the 3D page is written against them.
-
-Everything else here is what a presenter needs during a live meeting: inject a
-fault, clear it, change the speed, get back to steady state. The fault commands
-write the Faults/* tags and nothing else, because the simulator reads those
-tags every tick - so the route, the Designer and an operator screen all drive
-the cell by exactly the same mechanism.
+The state snapshot the 3D page polls at 4 Hz, and the presenter's controls.
+state() is one readBlocking of a cached path list plus indexing; its shape is
+frozen (docs/CONTRACT.md). The controls only write tags the simulator reads.
 """
 
 from java.lang import System as JSystem
@@ -20,18 +10,11 @@ P = MachineDemo.plant
 LOG = system.util.getLogger("MachineDemo.api")
 
 
-# ---------------------------------------------------------------------------
-# the snapshot
-# ---------------------------------------------------------------------------
-# Built once at module load: the cost of a poll is one round trip and a list
-# index, and the ORDER below is the only thing keeping the two halves in step,
-# so the reader and the writer are deliberately next to each other.
-
+# state() indexes every list below by position.
 LINE = ["Line/Running", "Line/Mode", "Line/CasesPerMin", "Line/CycleTime_s",
         "Line/CasesTotal", "Line/ShiftTarget"]
 
-# APPEND ONLY. The offsets below are positional, and the 3D page reads this
-# shape - so a new tag goes on the end and nothing existing ever moves.
+# APPEND ONLY: state() reads these by position.
 ROBOT = ["Robot/State", "Robot/J1_deg", "Robot/J2_deg", "Robot/J3_deg",
          "Robot/J4_deg", "Robot/Lift_mm", "Robot/GripperClosed",
          "Robot/Vacuum_kPa", "Robot/CycleCount", "Robot/Fault",
@@ -54,31 +37,18 @@ FAULTS = ["Faults/%s" % n for n in
           ["WrapperFilmFeed", "ConveyorJam", "VacuumLow", "GuardOpen",
            "RobotAxisFault"]]
 
-# The machine's geometry: (tag path, response key, default), the ONE list in
-# MachineDemo.plant that the tags are created from and the simulator derives
-# from. If a Config tag does not exist yet or reads bad quality, the page must
-# still get a complete block, never a hole - hence the defaults.
+# (tag path, response key, default); the default fills in for a missing or bad Config tag.
 CONFIG = P.GEOMETRY
 
 _PLAN = None
 
-# Quality is judged stale after this many milliseconds with no fresh write.
-# The contract calls for ">5s"; the simulator ticks every 500ms, so 5000ms is
-# ten missed ticks - long enough that ordinary poll jitter or a slow gateway
-# never trips it, short enough that a presenter watching the page sees the
-# banner inside about a second of the sim actually stopping (the 250ms poll
-# plus this margin).
+# ms with no write to any tag before the snapshot is stale: ten missed 500 ms sim ticks.
 STALE_AFTER_MS = 5000
 
 
 def _plan():
-	"""(paths, offsets), built once and cached.
-
-	Built lazily rather than at module load: a project script module that
-	touches a SIBLING module while it is itself being imported depends on the
-	order the script manager happens to load them in, and that order is not
-	something a project gets to choose.
-	"""
+	"""(paths, offsets), built on first use and cached."""
+	# Lazy, not at import: touching a sibling module during import depends on load order.
 	global _PLAN
 	if _PLAN is not None:
 		return _PLAN
@@ -128,12 +98,7 @@ def _s(v):
 
 
 def _ci(v, default):
-	"""One Config/* value as an int, or the contract default.
-
-	Covers both holes: the tag does not exist yet (P.read() -> None) and the
-	tag exists but reads something that will not convert (bad quality already
-	came back as None from P.read(), so this is really just belt-and-braces).
-	"""
+	"""One Config/* value as an int, or default if missing or unconvertible."""
 	if v is None:
 		return default
 	try:
@@ -143,17 +108,7 @@ def _ci(v, default):
 
 
 def _readQ(paths):
-	"""Read many tags at once, exactly like plant.read(), but keep the
-	QualifiedValue instead of collapsing it straight to a value-or-None.
-
-	plant.read() is not ours to change, and adding a second readBlocking
-	call beside it would make every poll pay for two round trips instead of
-	one just to see what plant.read() already saw and threw away. So this is
-	a sibling of plant.read() living in api, not an edit to plant.py: same
-	call shape, same "bad quality reads back None" behaviour for the values,
-	but it also hands back the QualifiedValue list so the caller can look at
-	quality and timestamp.
-	"""
+	"""Like plant.read() (bad quality -> None), but also return the QualifiedValues."""
 	full = [P.tag(p) for p in paths]
 	try:
 		qvs = system.tag.readBlocking(full)
@@ -171,34 +126,9 @@ def _readQ(paths):
 
 
 def _quality(paths, qvs):
-	"""The `quality` block for ?cmd=state - additive, alongside the frozen
-	shape below, never inside it.
-
-	Every tag in this demo is a standard/memory tag with no OPC device behind
-	it (the simulator writes them directly), so `bad` - built from each
-	QualifiedValue's own quality.isGood() - is the check for a tag that was
-	deleted, renamed, or never created: it will almost never fire from the
-	simulator merely being stopped, because writeBlocking leaves a memory
-	tag's quality Good forever, changing only its timestamp.
-
-	That is exactly the dangerous case docs/CONTRACT.md describes: a frozen
-	arm position that still reads Good. So `stale` is judged separately, off
-	the AGE of the NEWEST timestamp across every tag in this same read -
-	directly measuring "the simulator, as a whole, has not written for more
-	than 5s", the contract's own wording, rather than "one particular tag
-	has not changed".
-
-	A single representative tag was tried first and measured wrong: Robot/
-	CycleCount only advances once per ~12s pick-and-place cycle, and a
-	memory tag's timestamp does not move on a write that repeats the same
-	value (measured on this gateway, 02/09/2026 - CycleCount alone flagged a
-	healthy, moving robot "stale" for several seconds out of every cycle).
-	Taking the max across the whole snapshot fixes that for free: something
-	in an 8-node, ~90-tag cell (a joint angle, a photo-eye, a case count) is
-	all but certain to have moved within the last tick whenever the
-	simulator is genuinely running, and only truly freezes when the whole
-	tree does.
-	"""
+	"""The `quality` block for ?cmd=state: bad tag paths, staleness, worst quality."""
+	# Memory tags stay Good when the sim stops, so staleness is the age of the
+	# newest timestamp across the whole read (one tag alone can sit unchanged).
 	bad = []
 	worst_name = u"Good"
 	worst_rank = 2   # 0 Bad, 1 Uncertain, 2 Good - lower is worse
@@ -254,12 +184,8 @@ def _quality(paths, qvs):
 
 
 def state():
-	"""The whole cell in one dict, in the shape the 3D page is written against.
-
-	Shape is FROZEN. Adding keys is safe; renaming, reordering the pallet list
-	or changing a type is not - the page reads j1..j4 and lift straight into a
-	scene graph and a null there stops the animation rather than logging.
-	"""
+	"""The whole cell in one dict for ?cmd=state; shape FROZEN, add keys only."""
+	# A null in j1..j4 or lift stops the page's animation without an error.
 	paths, o = _plan()
 	v, qvs = _readQ(paths)
 
@@ -312,8 +238,6 @@ def state():
 			"grip": _b(rb[6]), "vac": _f(rb[7]),
 			"cycles": _i4(rb[8]),
 			"fault": _b(rb[9]), "faultText": _s(rb[10]),
-			# Added after the shape was frozen: additions only, so the page
-			# and the screens written against the original keys are untouched.
 			"jogUp": _b(rb[11]), "jogDown": _b(rb[12]),
 			"liftTarget": _f(rb[13]),
 		},
@@ -333,29 +257,12 @@ def state():
 		           "VacuumLow": _b(fl[2]), "GuardOpen": _b(fl[3]),
 		           "RobotAxisFault": _b(fl[4])},
 		"zones": zones,
-		# Additive: the 3D page's geometry. Every key is always present, even
-		# when the tag underneath it does not exist yet - a missing Config tag
-		# reads back None from P.read() and falls to the default beside it
-		# above, not a hole in the response.
 		"config": dict((key, _ci(val, default))
 		               for (path, key, default), val in zip(CONFIG, cf)),
-		# Additive: whether this snapshot is trustworthy - see _quality()'s
-		# docstring for how "stale" is judged across the whole read.
 		"quality": _quality(paths, qvs),
-		# Additive: what the simulator DERIVED from that config - the pattern,
-		# cases a pick, and whether the arm can reach every placement. Cached
-		# in the simulator until a Config tag changes, so the poll pays
-		# nothing for it.
 		"geometry": _geometry(),
-		# Additive: how many cartons are standing on the infeed. The 3D page
-		# draws exactly this many, at the same pitch the simulator blocks its
-		# photo-eyes with, so the beams and the boxes cannot disagree.
 		"infeed": _infeed(),
-		# Additive: mtime-and-size of the view file the scene document lives in.
-		# The page compares it with the one it built from and rebuilds when it
-		# moves, so an edit to the parts list in the Designer reaches a running
-		# session on Save - no page reload, no restart. A stat, not a read: this
-		# is on the 4 Hz poll.
+		# A stat of the scene view.json, not a read: this is on the 4 Hz poll.
 		"sceneRev": _sceneRev(),
 	}
 
@@ -383,24 +290,15 @@ def _geometry():
 		return {"reach": {"ok": True, "unreachable": 0, "note": u""}}
 
 
-# ---------------------------------------------------------------------------
-# presenter controls
-# ---------------------------------------------------------------------------
-
-
 def faults():
-	"""Which faults exist, what each one does, and whether it is standing.
-
-	The effects are stated so a presenter can pick the one that makes the point
-	being made rather than the one with the shortest name.
-	"""
+	"""Every fault with its label, effect and whether it is active."""
 	live = dict(zip(P.FAULTS, P.read(["Faults/%s" % n for n in P.FAULTS])))
 	return [{"name": n, "label": P.FAULT_LABEL[n], "effect": P.FAULT_EFFECT[n],
 	         "active": bool(live.get(n))} for n in P.FAULTS]
 
 
 def setFault(name, on=True):
-	"""Inject or clear one fault. Returns what it did, or raises."""
+	"""Inject or clear one fault by name (case-insensitive); raise ValueError if unknown."""
 	name = (name or "").strip()
 	match = [n for n in P.FAULTS if n.lower() == name.lower()]
 	if not match:
@@ -408,11 +306,7 @@ def setFault(name, on=True):
 		                 % (name, ", ".join(P.FAULTS)))
 	n = match[0]
 	P.write({"Faults/%s" % n: bool(on)})
-	# Wait out one 500 ms simulator tick before returning. The route's caller -
-	# a presenter's phone, or a test - reads the state that comes back with the
-	# response, and without this it is the state from BEFORE the cell reacted:
-	# "I injected a jam and the conveyor is still running" on the same screen
-	# as the injection that stopped it.
+	# Wait out a 500 ms sim tick so the caller's next read shows the cell's reaction.
 	from java.lang import Thread as JThread
 	JThread.sleep(700)
 	LOG.info("%s fault %s" % ("injected" if on else "cleared", n))
@@ -421,17 +315,9 @@ def setFault(name, on=True):
 
 
 def reset():
-	"""Back to steady state: every fault cleared, the cell running again.
-
-	It does NOT wipe the pallets or the shift total. A reset on a real cell
-	clears the fault and lets the machine carry on with the pallet it was
-	building, and a demo that silently threw away 40 cases every time somebody
-	pressed reset would be teaching the wrong thing.
-	"""
+	"""Back to steady state: faults, jog bits, safety and CAD sim slots cleared, Auto; pallets kept."""
 	mapping = dict(("Faults/%s" % n, False) for n in P.FAULTS)
-	# Momentary bits are cleared by a reset like everything else - a reset that
-	# left a jog bit set would move the axis the moment the interlocks came
-	# back.
+	# A jog bit left set would move the axis as soon as the interlocks clear.
 	mapping["Robot/JogUp"] = False
 	mapping["Robot/JogDown"] = False
 	mapping["Line/SimEnabled"] = True
@@ -449,19 +335,13 @@ def reset():
 
 
 def geometryPresets():
-	"""The whole-machine presets, for the geometry panel."""
+	"""The whole-machine geometry presets as name, label, detail and values."""
 	return [{"name": n, "label": l, "detail": d, "values": v}
 	        for n, l, d, v in P.GEOMETRY_PRESETS]
 
 
 def setGeometry(preset="default"):
-	"""Write all fifteen Config tags at once, to a named preset.
-
-	Exactly the writes an application engineer would make one at a time in
-	the Designer - nothing here that a tag write cannot do - which is the
-	point: the simulator and the 3D page pick the change up from the tags,
-	not from this call.
-	"""
+	"""Write every Config tag from the named preset over the defaults; raise ValueError if unknown."""
 	key = (preset or "default").strip().lower()
 	match = [p for p in P.GEOMETRY_PRESETS if p[0] == key]
 	if not match:
@@ -476,13 +356,8 @@ def setGeometry(preset="default"):
 
 
 def setSpeed(value):
-	"""Machine time as a multiple of real time. 1 is real time.
-
-	Clamped to 0.25x..10x. Nothing above that is watchable, and the alarm
-	engine counts on-delays in REAL seconds regardless of this number - which
-	is why nothing in this demo's tag tree carries an on-delay long enough for
-	speed to outrun it.
-	"""
+	"""Set machine time as a multiple of real time, clamped to 0.25..10."""
+	# Alarm on-delays count real seconds whatever this speed is.
 	try:
 		v = float(value)
 	except:
@@ -502,14 +377,7 @@ def setMode(value):
 
 
 def setJog(name, on=True):
-	"""Set or clear ONE momentary jog bit, and nothing else.
-
-	It writes the tag and returns immediately - no settle delay, no motion of
-	its own. That is the point: the bit is the whole of the command, the
-	simulator owns the axis, and a caller that wants to know what moved reads
-	?cmd=state like any other client. A route that moved the axis itself would
-	prove nothing about the tags.
-	"""
+	"""Set or clear the up or down jog bit; the simulator does the moving."""
 	key = (name or "").strip().lower()
 	if key not in ("up", "down"):
 		raise ValueError("jog direction must be up or down, not '%s'" % name)
@@ -519,11 +387,7 @@ def setJog(name, on=True):
 
 
 def setGuards(closed):
-	"""Open or close the guard circuit directly, as a guard switch would.
-
-	Safety/GuardsClosed is an INPUT to the simulator, not something it owns, so
-	this is a real interlock test and not a flag the next tick overwrites.
-	"""
+	"""Write Safety/GuardsClosed, a simulator input, as a guard switch would."""
 	P.write({"Safety/GuardsClosed": bool(closed)})
 	return {"guardsClosed": bool(closed)}
 

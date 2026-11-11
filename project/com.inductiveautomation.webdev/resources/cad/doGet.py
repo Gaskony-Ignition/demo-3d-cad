@@ -1,6 +1,6 @@
 def doGet(request, session):
-	# `def doGet` must be the first byte of this file - anything above it makes
-	# the route return an empty 200 with nothing in the log.
+	"""Serve CAD part files (?model=&f=), part lists (f=list) and part alarms (f=alarms)."""
+	# `def doGet` must be the first byte of this file, or the route returns an empty 200.
 	import os
 
 	params = request.get('params', {}) or {}
@@ -8,10 +8,8 @@ def doGet(request, session):
 	model = params.get('model', '') or ''
 
 	def send(path, contentType):
-		# Returning the byte[] as 'response' does NOT work - WebDev encodes it
-		# as text and a 28,984-byte STL arrives as 39,156 bytes of mojibake,
-		# with no error anywhere. Measured 09/09/2026. Write the bytes to the
-		# servlet stream instead and return nothing.
+		# Bytes returned as 'response' are re-encoded as text and arrive corrupt;
+		# write them to the servlet stream and return None.
 		data = system.file.readFileAsBytes(path)
 		resp = request['servletResponse']
 		resp.setContentType(contentType)
@@ -43,9 +41,7 @@ def doGet(request, session):
 	if d is None:
 		return {'json': {'ok': False, 'error': 'cad folder not found'}}
 
-	# Whatever STL files are sitting in this resource folder ARE the built-in
-	# model. Adding a part is dropping a file in and running a project scan;
-	# there is no list to maintain in here.
+	# Every STL in this resource folder is a part of the built-in model.
 	names = sorted([f[:-4] for f in os.listdir(d) if f.lower().endswith('.stl')])
 
 	if want == 'list':

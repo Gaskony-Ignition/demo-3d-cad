@@ -1,32 +1,20 @@
-# The cell's parts list, read from where a person can edit it.
-#
-# Option A: the 3D page's geometry is a DOCUMENT, not a function. The document
-# lives in the custom properties of the Machine/Scene view, so it is edited in
-# the Designer's property editor with its tree, its add-row buttons and its
-# binding dialog - rather than in a tag's JSON editor, which is honest but not
-# friendly, or in JavaScript, which is what this replaces.
-#
-# Those custom props are also, deliberately, the prop schema a Perspective
-# component would take. Nothing built against them is thrown away if the
-# component gets built.
+"""
+The 3D cell's scene document: the Machine/Scene view's custom props, edited in
+the Designer and read here off the view.json on disk for the 3D page.
+"""
 
 import os
-import system
 from java.lang import System
 
 VIEW = "Machine/Scene"
 
-# The five props the document is spread across. Spread rather than nested so a
-# binding path reads custom.parts[3].size[0] - which is what the component's
-# props.parts[3].size[0] would be.
+# Top-level rather than nested so a binding reads custom.parts[3].size[0], the
+# same path a Perspective component's props would use.
 KEYS = ["units", "consts", "data", "materials", "parts"]
 
 
 def _candidates():
-	# Same resolution the lib route uses to serve the vendored three.js: the
-	# gateway's install directory is not something a project resource can
-	# assume, so try the properties that name it and fall back to the path the
-	# stock Docker image uses.
+	"""Possible paths to the view.json, from the install-dir system properties and the Docker default."""
 	project = system.util.getProjectName()
 	rel = os.path.join("data", "projects", project,
 	                   "com.inductiveautomation.perspective", "views",
@@ -46,18 +34,12 @@ def _candidates():
 	return out
 
 
-# The path costs four os.path.exists() calls to resolve, and revision() is asked
-# for it four times a second. Resolved once, then reused.
+# Cached: revision() is polled four times a second.
 _resolved = [None]
 
 
 def revision():
-	"""A cheap token that changes when the view file changes. Never raises.
-
-	The Designer writes view.json when the project is saved, so mtime and size
-	are the whole signal - no parse, no read. Returns "" when the file cannot be
-	found, which the page reads as "nothing to watch" rather than as a change.
-	"""
+	"""Return "mtime-size" of the Scene view.json, or "" if it is not found; never raises."""
 	paths = [_resolved[0]] if _resolved[0] else _candidates()
 	for path in paths:
 		try:
@@ -71,12 +53,7 @@ def revision():
 
 
 def document():
-	"""The scene document, or a dict saying why there isn't one.
-
-	Never raises. The 3D page falls back to its built-in geometry if this
-	cannot be read, and a page that renders the cell it has always rendered is
-	a better failure than a page that renders nothing.
-	"""
+	"""Return {"ok": True, "scene": {...}} from the Scene view, or {"ok": False, "error"} saying why; never raises."""
 	tried = []
 	for path in _candidates():
 		tried.append(path)

@@ -1,23 +1,12 @@
-# CAD models for the CAD page: the built-in one in the project's `cad` WebDev
-# resource, and the ones uploaded from the screen.
-#
-# Uploads live OUTSIDE the project, in <gateway data dir>/machine-demo-cad/
-# <model>/, so a new model shows the moment it is written - no project scan, no
-# resource.json to keep in step, and nothing that a project import or export
-# carries. One folder per model:
-#
-#   *.stl        an STL model: one part per file, part name = file name
-#   model.step   a STEP model: the parts come from its assembly tree, in the
-#                browser (occt-import-js), so the gateway never parses it
-#   meta.json    what was uploaded, when, as what
-#
-# Writes come only from the Perspective session (the CAD Models popup). The
-# WebDev `cad` route reads; it never writes, like every other route here.
+"""
+CAD models for the CAD page: the built-in one in the `cad` WebDev resource and
+uploads under <data dir>/machine-demo-cad/<model>/ (layout: docs/CAD-VIEWER.md).
+Writes come from the Perspective session; the `cad` route writes only STEP part names.
+"""
 
 import os
 import re
 import shutil
-import system
 from java.lang import Throwable as JThrowable
 
 LOG = system.util.getLogger("MachineDemo.cad")
@@ -28,8 +17,7 @@ BUILTIN = "_builtin"
 BUILTIN_LABEL = "UR5 sample (built-in)"
 
 MAX_UPLOAD = 50 * 1024 * 1024
-# A zip is checked against what it UNPACKS to, not what it weighs: a few KB of
-# zip can inflate to gigabytes.
+# Limit on unzipped size: a few KB of zip can inflate to gigabytes.
 MAX_UNZIPPED = 200 * 1024 * 1024
 MAX_PARTS = 500
 NAME_MAX = 48
@@ -54,11 +42,7 @@ def root():
 
 
 def safeName(text):
-	"""A model or part name that is only ever one path segment.
-
-	Letters, digits, - and _; anything else becomes _. A leading dot or
-	separator is stripped, so '..', '.hidden' and '/etc' cannot survive.
-	"""
+	"""text as one path segment of letters, digits, - and _ (no extension, no leading dot)."""
 	base = unicode(text or u"")
 	base = re.split(r"[\\/]", base)[-1]
 	stem, ext = os.path.splitext(base)
@@ -124,6 +108,7 @@ def options(rev=None):
 
 
 def uploadedOptions(rev=None):
+	"""Dropdown options for uploaded models only, without the built-in one."""
 	return [o for o in options(rev) if o["value"] != BUILTIN]
 
 
@@ -147,12 +132,7 @@ def builtinDir():
 
 
 def parts(name):
-	"""Part names of a model, as the CAD page names them.
-
-	STEP part names exist only after the page has parsed the file, so for a
-	STEP model this is what the page last reported (PARTS_FILE); empty until
-	the model has been shown once.
-	"""
+	"""Part names of a model; for STEP, what the page last reported (empty until first shown)."""
 	if not name or name == BUILTIN:
 		d = builtinDir()
 		return sorted([f[:-4] for f in os.listdir(d) if f.lower().endswith(".stl")]) if d else []
@@ -167,15 +147,12 @@ def parts(name):
 
 
 def partOptions(name, rev=None):
+	"""Dropdown options for the parts of one model."""
 	return [{"value": p, "label": p} for p in parts(name)]
 
 
 def saveParts(name, names):
-	"""Record the part names the page parsed out of a STEP model.
-
-	The one thing the CAD page writes over HTTP: a list of names into a fixed
-	file of a model that already exists. Never a tag, never a path.
-	"""
+	"""Store the part names the page parsed from a STEP model; return how many were kept."""
 	kind, _stems = files(name)
 	if kind != "step":
 		raise ValueError("part names are only recorded for STEP models")
@@ -215,11 +192,6 @@ def filePath(name, stem):
 	return None
 
 
-# ---------------------------------------------------------------------------
-# upload
-# ---------------------------------------------------------------------------
-
-
 def _isBinarySTL(data):
 	"""84-byte header + 50 bytes a triangle, exactly. Everything else is not."""
 	n = len(data)
@@ -246,12 +218,7 @@ def _write(path, data):
 
 
 def _unzipSTLs(data):
-	"""[(part name, bytes)] from a zip of STLs. Entry paths are never used.
-
-	Each part is named from the entry's BASENAME, run through safeName, so an
-	entry called ../../etc/x.stl lands as x.stl inside the model folder - there
-	is no path in the zip that can write outside it.
-	"""
+	"""[(part name, bytes)] from a zip of STLs, named by safeName(basename) so no entry path is used."""
 	from java.io import ByteArrayInputStream, ByteArrayOutputStream
 	from java.util.zip import ZipInputStream
 	from jarray import zeros
@@ -299,13 +266,8 @@ def _unzipSTLs(data):
 
 
 def save(filename, data, name=None):
-	"""Store one upload as a model. Returns {"name", "kind", "parts", "replaced"}.
-
-	`filename` decides the kind (.stl, .zip, .step/.stp); `name` defaults to it.
-	An existing model of the same name is replaced - re-uploading an updated
-	export is the normal case. The new model is written to a temporary folder
-	and swapped in, so a failed upload never leaves half a model behind.
-	"""
+	"""Store an upload as a model, replacing any of the same name; return name, kind, parts, replaced."""
+	# Written to a temporary folder and swapped in, so a failed upload leaves nothing.
 	size = len(data)
 	if size == 0:
 		raise ValueError("the file is empty")
@@ -372,17 +334,8 @@ def delete(name):
 	return True
 
 
-# ---------------------------------------------------------------------------
-# alarms linked to parts
-# ---------------------------------------------------------------------------
-
-
 def alarms():
-	"""Standing alarms on this demo's provider that name a CAD part.
-
-	The page decides which of them belong to the model it is showing; only it
-	knows a STEP model's part names, because only it parses the file.
-	"""
+	"""Standing alarms on this demo's provider that name a CAD part; active, then unacked, then newest first."""
 	key = MachineDemo.tagdata.CAD_PART
 	try:
 		events = system.alarm.queryStatus(
@@ -415,11 +368,6 @@ def alarms():
 		})
 	out.sort(key=lambda a: (not a["active"], a["acked"], -a["ts"]))
 	return out
-
-
-# ---------------------------------------------------------------------------
-# simulated part alarms - the CadSim slot pool (MachineDemo.tagdata._cadSim)
-# ---------------------------------------------------------------------------
 
 
 def _slot(i, leaf):
@@ -461,11 +409,7 @@ def simSlots(rev=None):
 
 
 def simRaise(part, priority="High"):
-	"""Raise a simulated alarm on a part. Returns the slot used.
-
-	The same part again re-raises its own slot (with the new priority). With
-	every slot holding a different part, it refuses rather than take one over.
-	"""
+	"""Raise a simulated alarm on a part, reusing its slot if it has one; return the slot."""
 	from java.lang import Thread as JThread
 	P = MachineDemo.plant
 	part = unicode(part or u"").strip()[:128]

@@ -1,46 +1,7 @@
-"""
-MachineDemo.sim - the palletising cell, simulated.
-
-The point of this module is that the cell RUNS rather than jitters. A robot
-that randomises its joint angles looks like noise the moment you put a 3D model
-on it; this one walks a real pick-and-place cycle and the pose at any instant
-is an eased interpolation between the two task-space points either side of it.
-Cases land on the pallet because the arm put them there, the layer count
-follows from the cases, the photo-eyes make and break as cartons actually pass
-them, and the infeed buffer drains if the conveyor stops.
-
-The wrist travels UP, ACROSS and DOWN, never on a diagonal: it lifts clear of
-the tallest stack before J1 turns, holds that height for the whole swing, and
-only descends once J1 is parked over the slot. That is what a real cell does
-and it is not a detail - a diagonal is geometrically valid at both ends and
-takes the forearm straight through the pallet in the middle.
-
-Time. `Line/SimSpeed` multiplies how fast MACHINE time runs against the wall
-clock. It does not make the machine faster: the nominal cycle stays 12.6
-machine-seconds and the reported cases/min stays ~14.3 at any speed, so the
-numbers on screen remain the numbers a real cell of this size would show. The
-tick integrates against measured elapsed real time, not against tick count, so
-a late or missed timer tick costs smoothness and nothing else.
-
-State. The sub-cycle state - which phase, how far into it, what is staged on
-the infeed - has nowhere to live in the tag contract, so it lives in a
-module-level dict. That dict is rebuilt from the tags whenever the module is
-reloaded (which is what a project scan does), so a deploy in the middle of a
-demo resumes the pallet where it was rather than starting it again.
-
-Faults are read from the tags every tick rather than held in here, so toggling
-[MachineDemo]Faults/ConveyorJam in the Designer drives the cell exactly the way
-the presenter route does.
-
-Geometry is read the same way. The fifteen Config/* tags - case, pallet,
-pattern, conveyor, where the two stations sit - are read every tick alongside
-the controls, and everything the cycle needs that depends on them (the layer
-pitch, the placement heights, where each pick goes on the pallet, how many
-cases a pick is, the safe travel height, whether the arm can reach any of it)
-is derived from them in _geometry() and cached until a value changes. So a
-tag written in the Designer changes the MACHINE within a tick, not just the
-picture: the 3D page rebuilds from the same tags, and the two agree because
-they are both reading the one set of numbers. There is no second copy.
+"""The palletising cell, simulated: a real pick-and-place cycle in task space, solved to joints.
+Line/SimSpeed scales machine time only; the tick integrates measured real time.
+Sub-cycle state lives in a module dict, rebuilt from the tags after a project scan.
+Faults and the fifteen Config/* geometry tags are read every tick; geometry is cached.
 """
 
 import math
@@ -53,89 +14,49 @@ P = MachineDemo.plant
 LOG = system.util.getLogger("MachineDemo.sim")
 
 
-# ---------------------------------------------------------------------------
-# geometry and inverse kinematics
-# ---------------------------------------------------------------------------
-# The joints are SOLVED, not chosen. The cell is described in metres in the
-# world frame - where the conveyor is, where the two pallets are, how tall a
-# case is - and the arm is asked to put its wrist there; J2, J3 and the lift
-# fall out of a two-link IK solve. Picking joint angles by eye is what put the
-# gripper 330 mm through the floor in the first cut of this module: angles that
-# look plausible in a tag browser are not a machine that can reach anything.
-#
-# World frame: robot base at the origin, Y up, metres.
-#   J1 rotates the base about Y:      J1 = atan2(-Z, X), planar radius r = |XZ|
-#   the carriage rides the column at  y = BASE_Y + Lift_mm/1000
-#   J2 is the upper arm from horizontal, positive up
-#   J3 is the forearm relative to the upper arm, positive up
-#   so the wrist lands at            r = L1*cos(J2) + L2*cos(J2+J3)
-#                                    y = carriageY + L1*sin(J2) + L2*sin(J2+J3)
-#   J4 spins the gripper about Y to lay the case to the interlock pattern.
-
+# World frame: robot base at the origin, Y up, metres. J1 = atan2(-Z, X);
+# J2 is the upper arm from horizontal, J3 the forearm relative to it, both positive up.
 L1 = 1.35            # shoulder to elbow, m
 L2 = 1.15            # elbow to wrist, m
-BASE_Y = 0.34        # carriage height at Lift_mm = 0
+BASE_Y = 0.34        # carriage height at Lift_mm = 0, m
 LIFT_MAX_MM = 1200.0
-D_MIN = 0.20         # the solve is never asked for anything outside
-D_MAX = 2.45         # these, whatever the pattern asks for
+D_MIN = 0.20         # clamp on the carriage-to-wrist distance, m
+D_MAX = 2.45
 
-# The carriage tracks the wrist from CARRIAGE_ABOVE metres above it, which is
-# what keeps D short as the stack grows: a lift that never moves has to solve
-# every layer with reach alone and runs out of arm on layer four.
+# The carriage tracks the wrist from this far above it, m; a fixed lift runs
+# out of reach by layer four.
 CARRIAGE_ABOVE = 0.30
 
-# A pose here is TASK space - (J1 deg, planar radius m, wrist height m, J4 deg)
-# - and it is task space that gets interpolated through the cycle. Interpolating
-# joint ANGLES between two solved poses does not travel between the two points;
-# it travels along whatever curve the linkage happens to trace, which on a long
-# swing dips the wrist through the conveyor halfway across.
+# A pose is task space (J1 deg, radius m, wrist height m, J4 deg) and is interpolated
+# there: interpolating joint angles dips the wrist through the conveyor on a long swing.
 
 def _task(x, z, wristY, j4=0.0):
 	"""A world point (X, Z, wrist height) as (J1, radius, wristY, J4)."""
 	return (math.degrees(math.atan2(-z, x)), math.hypot(x, z), wristY, j4)
 
 
-# The two places that do NOT move with the Config tags, in metres. The infeed
-# conveyor's pick end is fixed beside the robot - the page draws the conveyor
-# growing away from it when ConvLength changes - and home is home.
+# Fixed, not Config: the page grows the conveyor away from the pick end.
 INFEED_XZ = (1.62, 0.10)          # pick point off the infeed conveyor
 HOME_XZ = (1.10, 0.0)
 HOME_WRIST_Y = 1.35
 
-# Three offsets that are the 3D page's, read off how it draws the parts, so the
-# arm puts a case exactly where the page shows one:
-#   a case on the infeed rides ROLLER_TOP_M above the conveyor's top-of-belt
-#   height (the rollers), layer 0 sits DECK_TOP_M above the pallet's deck
-#   height (the deck boards), and the case the gripper holds has its top
-#   WRIST_TO_CASE_TOP_M below the wrist (0.14 plate drop + 0.09 case drop).
-# The gripper depth must match the page's own drawing (0.23): a mismatch sets
-# every placed case INTO the layer below it and every pick through the belt.
+# These three match how the 3D page draws the rollers, deck boards and gripper;
+# a mismatch sets every placed case into the layer below and every pick through the belt.
 ROLLER_TOP_M = 0.045
 DECK_TOP_M = 0.02
 WRIST_TO_CASE_TOP_M = 0.23
 CASE_INSET = 0.94                 # the page draws the pattern 6% inside its span
 
-# How far above the tallest stack the wrist travels while it is swinging.
-SAFE_CLEAR_M = 0.35
+SAFE_CLEAR_M = 0.35               # wrist clearance over the tallest stack while swinging
 
-# Where the cartons stand on the infeed, and where the photo-eyes look.
-#
-# The accumulation queue is ONE model shared with the 3D page: cartons stop at
-# a line 0.35 m from the near end of the belt and back up behind each other at
-# a pitch of one case depth plus a 50 mm gap. The page draws that queue; this
-# module decides which eyes it covers. Both sides have to use the same three
-# numbers or a beam goes green with a carton sitting in it, which is the one
-# thing a photo-eye must never do on a screen a fitter is reading.
-#
-# EYE_OFFSETS is each eye's distance from the stop line, in metres, positive
-# upstream. Four of the six are measured from the FAR end of the belt, so they
-# move when ConvLength does - hence a function of the length rather than a
-# table of constants.
+# The 3D page draws the same queue from these numbers; if they differ, a beam
+# reads clear with a carton standing in it.
 QUEUE_STOP_GAP_M = 0.35           # stop line, back from the near end
 QUEUE_GAP_M = 0.05                # between one carton and the next
 
 
 def _eyeOffsets(convLen):
+	"""Each eye's distance upstream of the stop line, m; four move with the belt length."""
 	return {
 		"PE_InPos2": -0.10,
 		"PE_InPos1": 0.25,
@@ -146,26 +67,15 @@ def _eyeOffsets(convLen):
 	}
 
 
-# A placement is judged reached if the solved wrist lands within this of where
-# it was asked to go. The arm's joints and column are clamped in _solve(), so
-# anything further out than this is a slot the machine cannot build.
-REACH_TOL_M = 0.05
+REACH_TOL_M = 0.05                # a solved wrist further off than this is an unbuildable slot
 
-# Everything else about the cell - the case, the pallet, the pattern, the
-# conveyor height, where the stations sit - is the Config tags, derived into
-# one dict by _geometry() and cached here until a tag changes. Nothing below
-# this line reads a case height or a station position from anywhere else.
+# Derived geometry, cached by _geo() until a Config value changes.
 _G = None
 _G_KEY = None
 
 
 def _solve(r, wristY):
-	"""(J2, J3, Lift_mm) putting the wrist at planar radius r, height wristY.
-
-	Elbow-down branch, which is the one a palletiser uses: the forearm comes
-	down onto the stack rather than up over it, so the elbow never has to clear
-	the case it is carrying.
-	"""
+	"""(J2, J3, Lift_mm) putting the wrist at radius r, height wristY; elbow-down, clamped."""
 	lift = _clamp((wristY - (BASE_Y - CARRIAGE_ABOVE)) * 1000.0, 0.0,
 	              LIFT_MAX_MM)
 	carriageY = BASE_Y + lift / 1000.0
@@ -180,12 +90,7 @@ def _solve(r, wristY):
 
 
 def _forward(j2, j3, lift):
-	"""Where the wrist actually is for a solved (J2, J3, Lift): (radius, y).
-
-	_solve() clamps every joint and the column to its travel, so its answer is
-	not always the point it was asked for. Running that answer forward is how
-	the reach report tells a slot the arm can build from one it cannot.
-	"""
+	"""Wrist (radius, y) for a solved pose; differs from the request where _solve clamped."""
 	a = math.radians(j2)
 	b = math.radians(j2 + j3)
 	r = L1 * math.cos(a) + L2 * math.cos(b)
@@ -196,20 +101,8 @@ def _forward(j2, j3, lift):
 HOME = _task(HOME_XZ[0], HOME_XZ[1], HOME_WRIST_Y)
 
 
-# ---------------------------------------------------------------------------
-# geometry, derived from the Config tags
-# ---------------------------------------------------------------------------
-
-
 def _grid(count):
-	"""(rows, cols) for one layer of `count` cases - the SAME rule the 3D page
-	uses, so the arm and the picture agree on where case n is.
-
-	The factor pair closest to square, the larger factor along X (the wider
-	pallet dimension). A count that will not factor - a prime - becomes one
-	row of `count`, which tiles; anything that is not a positive number falls
-	back to the 4 x 3 the demo shipped with, as the page does.
-	"""
+	"""(rows, cols) for a layer: the factor pair closest to square, as the 3D page does; (3, 4) if invalid."""
 	try:
 		count = int(count)
 	except:
@@ -226,10 +119,7 @@ def _grid(count):
 
 
 def _layout(g, rot):
-	"""Station-local (x, z) of every case in a layer, in the order the page
-	fills them: column by column, so that one pick - one column - is `rows`
-	cases standing in a line. Odd layers are the same grid with the case
-	turned, which is what interlocks the stack."""
+	"""Station-local (x, z) of each case in a layer, column by column as the page fills them."""
 	cw = g["caseD"] if rot else g["caseW"]
 	cd = g["caseW"] if rot else g["caseD"]
 	rows, cols = g["rows"], g["cols"]
@@ -244,12 +134,7 @@ def _layout(g, rot):
 
 
 def _geometry(raw):
-	"""Everything the cycle needs, from the fifteen Config values.
-
-	`raw` is {response key: int} - the same keys ?cmd=state publishes - with a
-	default already filled in for any tag that did not read. Distances come in
-	as whole millimetres and leave as metres, because the solve is in metres.
-	"""
+	"""Derived geometry from {Config key: int mm}; distances leave as metres."""
 	mm = lambda k: raw[k] / 1000.0
 	g = {
 		"raw": dict(raw),
@@ -263,20 +148,13 @@ def _geometry(raw):
 		             2: (mm("station2X_mm"), mm("station2Z_mm"))},
 	}
 	g["rows"], g["cols"] = _grid(g["perLayer"])
-	# A pick is one column of the pattern: the case set squared up on the
-	# infeed is the row of cases the gripper takes across in one go. With the
-	# default 4 x 3 that is three, which is what it always was.
+	# A pick is one column of the pattern.
 	g["pick"] = g["rows"]
 	g["perPallet"] = g["perLayer"] * g["layers"]
-	# Layer 0's case bottoms, and the wrist height that lifts a case set off
-	# the infeed. Both derived, both matching the page to the millimetre.
 	g["deck"] = mm("palletH_mm") + DECK_TOP_M
 	g["pickWristY"] = g["convY"] + g["caseH"] + ROLLER_TOP_M + WRIST_TO_CASE_TOP_M
 	g["pickLow"] = _task(INFEED_XZ[0], INFEED_XZ[1], g["pickWristY"])
-	# Where each pick lands: the centroid of the cases it places, per layer
-	# parity, in station-local metres. Column-major layout means a full column
-	# has a centroid on the column's centreline; a short last column (a count
-	# that does not divide) is simply whatever cases are left.
+	# Each pick lands at the centroid of its cases, per layer parity; a short last column is what is left.
 	slots = {}
 	for parity in (0, 1):
 		lay = _layout(g, parity == 1)
@@ -289,8 +167,8 @@ def _geometry(raw):
 	g["slots"] = slots
 	g["picksPerLayer"] = len(slots[0])
 	g["pattern"] = "%d x %d interlock" % (g["layers"], g["perLayer"])
-	# The infeed runs 8% faster than the robot consumes a column - see the
-	# CARTON_PITCH note further down for why exactly-matched rates were wrong.
+	# Infeed 8% faster than the robot consumes: at exactly matched rates the buffer
+	# grazes zero between cycles and Line/Running flickers false.
 	g["cartonPitch"] = (P.CYCLE_S / float(g["pick"])) * 0.92
 	g["bufferMax"] = 2 * g["pick"]
 	g["reach"] = _reach(g)
@@ -298,20 +176,12 @@ def _geometry(raw):
 
 
 def _reach(g):
-	"""Can this arm build this pattern on these pallets? Asked of the solver.
-
-	Every slot of every layer on both stations, plus the pick, is solved and
-	run forward again; a wrist that lands more than REACH_TOL_M from where it
-	was sent is a case the machine would set down in the wrong place - or, at
-	the far corner of a big pallet, in mid-air. This is the number the
-	geometry panel and ?cmd=state report, so a presenter who types a 2 m
-	pallet finds out from the screen and not from the arm.
-	"""
+	"""Solve the pick, every placement and the clearing heights; report any the arm cannot reach."""
 	bad = []
 	worst = 0.0
 
 	def check(where, pose):
-		j1, r, y, j4 = pose
+		_, r, y, _ = pose
 		j2, j3, lift = _solve(r, y)
 		r2, y2 = _forward(j2, j3, lift)
 		err = math.hypot(r - r2, y - y2)
@@ -326,8 +196,7 @@ def _reach(g):
 				pose = _placePoseG(g, n, slot, layer, None)
 				worst = max(worst, check("station %d layer %d slot %d"
 				                         % (n, layer + 1, slot + 1), pose))
-	# The travel height over the finished stack: a pallet the arm can build
-	# but cannot then clear is a pallet it collides with on the last retract.
+	# A pallet the arm can build but not clear is one it hits on the last retract.
 	top = g["deck"] + g["layers"] * g["caseH"] + SAFE_CLEAR_M
 	for n in sorted(g["stations"].keys()):
 		x, z = g["stations"][n]
@@ -342,12 +211,9 @@ def _reach(g):
 
 
 def _rawFromRead(values):
-	"""{key: int} from what the Config tags read back, defaults filling any
-	tag that is missing or will not convert - a machine with a hole in its
-	geometry is not a machine, so the hole is filled and the tag fixed later
-	by setup rather than the cycle stopping."""
+	"""{key: int} from the read Config values, defaulting any missing or bad one so the cycle never stops."""
 	raw = {}
-	for (path, key, default), v in zip(P.GEOMETRY, values):
+	for (_, key, default), v in zip(P.GEOMETRY, values):
 		try:
 			raw[key] = int(v) if v is not None else int(default)
 		except:
@@ -356,9 +222,7 @@ def _rawFromRead(values):
 
 
 def _geo(values=None):
-	"""The current derived geometry. Pass the fifteen freshly read Config
-	values from the tick; with none it reads them itself, which is what
-	rehydration and ?cmd=status do. Rebuilt only when a value changes."""
+	"""Current derived geometry from the tick's Config values, or the cache (else a read) when None."""
 	global _G, _G_KEY
 	if values is None:
 		if _G is not None:
@@ -385,15 +249,7 @@ def _geo(values=None):
 
 
 def _onGeometryChange(s, g):
-	"""Bring the running cycle onto the new machine.
-
-	The pallet counts are kept - the cases are on the pallet - and clamped to
-	the new capacity, so a smaller pattern on a full station completes it and
-	the wrapper takes it away. Layer and slot are re-derived from the count,
-	the travel height from the new stack, and the next _target() call glides
-	the arm from wherever it is to the new place. Names are re-written so the
-	stations report the new pattern.
-	"""
+	"""Re-aim the running cycle at new geometry, keeping pallet counts clamped to the new capacity."""
 	for n in P.STATIONS:
 		st = s["st"][n]
 		st["cases"] = min(g["perPallet"], st["cases"])
@@ -408,9 +264,7 @@ def _onGeometryChange(s, g):
 
 
 def infeedInfo():
-	"""The accumulation queue, for the 3D page: how many cartons are standing
-	on the belt and the most it holds. The page draws this many, at the pitch
-	in QUEUE_GAP_M, which is the same queue _eyes() blocks its beams with."""
+	"""Infeed queue for the 3D page: cartons on the belt, capacity, pitch and stop gap in mm."""
 	s = _state()
 	g = _geo()
 	return {"queue": int(s["buf"] + _staged(s)), "max": int(g["bufferMax"]),
@@ -419,8 +273,7 @@ def infeedInfo():
 
 
 def geometryInfo():
-	"""The derived machine, for ?cmd=state and the geometry panel: additive,
-	small, and cached - the poll pays nothing for it until a tag changes."""
+	"""Derived pattern, pick sizes, heights and reach report for ?cmd=state."""
 	g = _geo()
 	return {
 		"pattern": g["pattern"],
@@ -435,14 +288,7 @@ def geometryInfo():
 
 
 def _stackTopM(s):
-	"""The top of the TALLER of the two stacks, in metres.
-
-	Both stations, not just the one being built: the arm swings across the
-	cell, and a safe height worked out from the target pallet alone is not safe
-	over the other one when that is the full pallet waiting for the wrapper.
-	A part-built layer counts as a whole one - the cases in it are already at
-	full height.
-	"""
+	"""Top of the taller of the two stacks, m; a part-built layer counts as whole."""
 	g = _geo()
 	top = g["deck"]
 	for n in P.STATIONS:
@@ -453,25 +299,13 @@ def _stackTopM(s):
 
 
 def _safeWristY(s, layer):
-	"""Travel height for this cycle: clear of both stacks and of the conveyor.
-
-	Floored at the pick height so that on an empty pallet the arm still travels
-	high enough to clear the infeed and the pallet rails rather than skimming
-	them, which is what the bare stack-plus-clearance figure would give.
-	"""
+	"""Travel height for this cycle: clear of both stacks, never below the pick height."""
 	g = _geo()
 	top = max(_stackTopM(s), g["deck"] + (layer + 1) * g["caseH"])
 	return max(g["pickWristY"], top + SAFE_CLEAR_M)
 
-# The cycle, as (name, machine-seconds at nominal, the state the robot reports).
-# They sum to P.CYCLE_S, and a jittered cycle scales all eight together.
-#
-# UP, ACROSS, DOWN - never a diagonal. Every swing (Approach, Traverse) happens
-# at the safe height and changes nothing but J1; every height change (Descend,
-# Lift, Lower, Retract) happens with J1 already parked at its target. The
-# straight interpolation this replaced was geometrically valid at both ends and
-# put the forearm through the middle of the pallet stack in between, which on a
-# close-up camera is the first thing a palletiser builder sees.
+# (name, machine-seconds at nominal, robot state); they sum to P.CYCLE_S.
+# Swings change only J1 at the safe height; a diagonal takes the forearm through the stack.
 PHASES = [
 	("Approach", 1.6, "Picking"),    # swing back over to the infeed, up high
 	("Descend", 1.2, "Picking"),     # straight down onto the case set
@@ -483,55 +317,26 @@ PHASES = [
 	("Retract", 1.9, "Placing"),     # straight up, clear of the stack
 ]
 
-# Hold-to-run jog on the lift axis. 120 mm/s of MACHINE time: fast enough to
-# cross the column in ten seconds, slow enough that a finger on a button can
-# stop it where it means to.
-JOG_RATE_MM_S = 120.0
+JOG_RATE_MM_S = 120.0     # per machine-second
 
-# The axis follows its command with a short lag, so the Manual screen's
-# commanded and actual readouts are two different numbers during a move -
-# which is what makes showing both of them worth the space.
+# The axis lags its command, so the Manual screen's commanded and actual differ during a move.
 JOG_LAG_S = 0.25
 
-# A momentary bit that stays set is the failure a customer WILL ask about: a
-# browser tab closes mid-jog and the axis runs to the limit on its own. Counted
-# in REAL seconds, not machine seconds - a tab closing is a wall-clock event,
-# and counting machine time would make the watchdog four times twitchier at 4x.
+# Real seconds: a browser tab closing mid-jog is a wall-clock event.
 JOG_WATCHDOG_S = 30.0
 
 HOLD_VACUUM_KPA = -66.0
 LOW_VACUUM_KPA = -17.0
 
-# The infeed runs 8% FASTER than the robot consumes, so the accumulation
-# conveyor rides full and backs up - which is what an infeed does when the
-# palletiser is the bottleneck, and it is the bottleneck by design.
-#
-# Matching the two rates exactly instead looked right on paper and was wrong on
-# the gateway: the buffer grazed zero between cycles, so the robot took a
-# single idle tick roughly every third cycle and Line/Running flickered false
-# for half a second. A machine that micro-stops for no reason is the first
-# thing a machine builder notices.
-# Both the pitch and the buffer depend on how many cases a pick is, which is
-# the pattern's, so they live on the derived geometry: g["cartonPitch"] and
-# g["bufferMax"] (two picks' worth of accumulation - also the fuse on a jam:
-# with the infeed stopped the robot works the buffer down and starves about
-# 25 machine-seconds later, so the fault has a visible cause and then a
-# visible effect rather than both at once).
-
 DISCHARGE_LIFT_S = 3.0     # pallet leaves the station
 DISCHARGE_TOTAL_S = 8.0    # a fresh pallet is in place
 
-
-# ---------------------------------------------------------------------------
-# state
-# ---------------------------------------------------------------------------
 
 _S = None
 
 
 def _blank():
-	# The lift the arm actually holds at HOME, solved rather than typed, so the
-	# jog axis starts from where the column really is.
+	# Solved, so the jog axis starts where the column really is at HOME.
 	homeLift = _solve(HOME[1], HOME[2])[2]
 	return {
 		"t": JSystem.currentTimeMillis(),
@@ -569,12 +374,7 @@ def _blank():
 
 
 def _state():
-	"""The live sim state, rebuilt from the tags the first time it is asked.
-
-	Rehydration is what makes a project scan mid-demo survivable: the module
-	globals are gone, but the pallet, the totals and the cycle count are tags,
-	so the cell picks up where it stopped rather than starting the pallet over.
-	"""
+	"""The live sim state, rehydrated from the tags on first use (e.g. after a project scan)."""
 	global _S
 	if _S is not None:
 		return _S
@@ -623,15 +423,15 @@ def _state():
 
 
 def ticks():
-	"""How many times the timer has driven this module since it last loaded."""
+	"""Number of simulation ticks run since this module last loaded."""
 	return 0 if _S is None else _S.get("ticks", 0)
 
 
 def info():
-	"""What the simulator is doing right now, for ?cmd=status."""
+	"""Simulator internals (pose, phase, buffer, counts, geometry) for ?cmd=status."""
 	s = _state()
-	j1, radius, wristY, j4 = s["pose"]
-	j2, j3, lift = _solve(radius, wristY)
+	_, radius, wristY, _ = s["pose"]
+	_, _, lift = _solve(radius, wristY)
 	carriageY = BASE_Y + lift / 1000.0
 	return {
 		"wristY_m": round(wristY, 3),
@@ -656,23 +456,13 @@ def info():
 
 
 def clearInternals():
-	"""Drop the sub-cycle state so the next tick rebuilds it from the tags.
-
-	Used by ?cmd=reset: the tags are the record, this dict is only how far
-	through a cycle the arm was, and after a reset that is not worth keeping.
-	"""
+	"""Drop the sub-cycle state so the next tick rebuilds it from the tags."""
 	global _S
 	_S = None
 
 
-# ---------------------------------------------------------------------------
-# small maths
-# ---------------------------------------------------------------------------
-
-
 def _smooth(x):
-	"""Ease in and out. Constant-velocity joints read as a machine that has no
-	acceleration limits, which is the one thing every real robot has."""
+	"""Smoothstep ease in and out, so joints accelerate rather than move at constant speed."""
 	if x <= 0.0:
 		return 0.0
 	if x >= 1.0:
@@ -689,20 +479,12 @@ def _clamp(v, lo, hi):
 
 
 def _placePose(station, slot, layer, safeY=None):
-	"""Where the wrist has to be over this slot on the pallet.
-
-	`safeY` None means the placement height itself: layer L sits on top of L
-	completed layers, so the case bottom is at deck + L*caseH and the wrist
-	rides one case plus the gripper above that. Pass a height instead and it
-	is the same J1 and radius at that height, which is what makes the descent
-	vertical.
-	"""
+	"""Wrist pose over this slot: at the placement height, or at safeY with the same J1 and radius."""
 	return _placePoseG(_geo(), station, slot, layer, safeY)
 
 
 def _placePoseG(g, station, slot, layer, safeY):
-	"""_placePose against an explicit geometry - the reach report solves a
-	geometry that is not (yet) the live one."""
+	"""_placePose against an explicit geometry, for the reach report."""
 	x, z = g["stations"].get(station, g["stations"][1])
 	dx, dz = g["slots"][layer % 2][slot % g["picksPerLayer"]]
 	if safeY is None:
@@ -714,20 +496,12 @@ def _placePoseG(g, station, slot, layer, safeY):
 
 
 def _target(s, phase):
-	"""Where the WRIST is going by the end of this phase.
-
-	Read it down the list and the profile is the whole story: the two swings
-	end at the safe height, the four vertical legs end with J1 unchanged.
-	"""
+	"""Where the wrist is going by the end of this phase."""
 	name = PHASES[phase][0]
 	g = _geo()
 	safeY = s.get("safeY") or g["pickWristY"]
 	if name == "Approach":
-		# The empty-gripper swing back. It travels at the HIGHER of where it
-		# starts and where it is going, so that a cycle which began after the
-		# stack grew a layer - or on the other station, whose pallet is empty -
-		# is still a level swing and not a shallow descent across the cell.
-		# Costs nothing: the Descend leg takes the whole height off anyway.
+		# At the higher of start and safe height, so the swing stays level after the stack has grown.
 		return _task(INFEED_XZ[0], INFEED_XZ[1],
 		             max(safeY, s["from"][2] if s.get("from") else safeY))
 	if name == "Lift":
@@ -745,15 +519,9 @@ def _phaseSeconds(s, phase):
 	return PHASES[phase][1] * (s["cycleTime"] / P.CYCLE_S)
 
 
-# ---------------------------------------------------------------------------
-# the tick
-# ---------------------------------------------------------------------------
-
-
 def tick():
-	"""One simulation step. Never raises - a tick that fails logs and the next
-	one carries on, because a gateway timer that throws stops being scheduled
-	in some configurations and a dead demo is worse than a rough one."""
+	"""Run one simulation step; a failure is logged, never raised."""
+	# A gateway timer whose script throws can stop being scheduled.
 	try:
 		_tick()
 	except:
@@ -762,18 +530,9 @@ def tick():
 
 
 def _shiftIndex(now):
-	"""Which 8-hour shift a moment falls in: 0 from 00:00, 1 from 08:00,
-	2 from 16:00, and a different number tomorrow.
-
-	Derived from the clock rather than counted, so a gateway that was off
-	overnight comes back on the right shift instead of resuming yesterday's.
-
-	Calendar, not arithmetic on the epoch: dividing currentTimeMillis by
-	86400000 gives UTC days and a UTC hour, which on a +09:30 gateway would put
-	the shift boundaries at 09:30, 17:30 and 01:30 local. Calendar.getInstance()
-	uses the gateway's own zone, so the boundaries land where an operator would
-	expect them.
-	"""
+	"""8-hour shift number for an epoch-ms time, in the gateway's local zone."""
+	# Calendar, not epoch arithmetic: dividing the millis gives UTC hours and
+	# moves the shift boundaries off local time.
 	cal = Calendar.getInstance()
 	cal.setTimeInMillis(now)
 	day = cal.get(Calendar.YEAR) * 366 + cal.get(Calendar.DAY_OF_YEAR)
@@ -781,19 +540,7 @@ def _shiftIndex(now):
 
 
 def _rollShift(s, now):
-	"""Zero the shift total when the shift changes.
-
-	Without this the count only ever goes up: it is rehydrated from its tag on
-	every scan and incremented on every pick, so a demo gateway left running
-	reaches "12162 / 1800" against an 1800-case shift target - 676% of a target,
-	on the headline throughput readout of the Overview. The label says SHIFT and
-	it has to mean it.
-
-	ShiftIndex of -1 means no shift was ever recorded against this total - the
-	state of a gateway upgrading from a build that had no shift model. Whatever
-	the total says there, it is not this shift's, so it is zeroed too. On a
-	genuinely fresh install the total is already 0 and that costs nothing.
-	"""
+	"""Zero the shift total when the shift changes; ShiftIndex -1 (never recorded) counts as a change."""
 	idx = _shiftIndex(now)
 	if s["shiftIndex"] == idx:
 		return
@@ -814,12 +561,9 @@ def _tick():
 	if dtr <= 0.0:
 		dtr = 0.5
 	if dtr > 2.0:
-		# The cell was paused, the gateway was busy, or the module just
-		# reloaded. Cap it: integrating a ten second gap teleports the arm.
+		# A pause, a busy gateway or a reload: integrating the whole gap teleports the arm.
 		dtr = 2.0
 
-	# Everything the tick needs to read, in ONE round trip: the controls, the
-	# two jog bits, the guard circuit and the fifteen geometry tags.
 	want = {
 		"enabled": "Line/SimEnabled",
 		"speed": "Line/SimSpeed",
@@ -836,32 +580,24 @@ def _tick():
 		f[k] = bool(f[k])
 
 	if ctl.get("enabled") is None:
-		# The provider is not there yet. Setup has not been run.
+		# The provider is not there yet: setup has not been run.
 		return
 
-	# The machine's shape, this tick. Cached until a value changes, and a
-	# change re-derives the pattern and re-aims the cycle before anything
-	# below moves.
-	g = _geo([ctl.get(key) for path, key, default in P.GEOMETRY])
+	# A geometry change re-aims the cycle here, before anything below moves.
+	_geo([ctl.get(key) for path, key, default in P.GEOMETRY])
 
 	speed = _clamp(float(ctl.get("speed") or 1.0), 0.1, 20.0)
 	dt = dtr * speed
 	s["ticks"] += 1
 	s["zclock"] += dt
 
-	# The guard circuit is an INPUT, not something this module owns. It goes
-	# false when the GuardOpen fault is injected, and it also goes false when
-	# anyone writes it false - a test, an operator screen, a Designer session.
-	# Either way the cell is held. Driving it purely from the injected fault
-	# would mean a gateway that reported guards open and kept running.
+	# GuardsClosed is an input: anyone writing it false holds the cell, not only the fault.
 	held = f["GuardOpen"] or (ctl.get("guards") is False)
 	robotFault = f["RobotAxisFault"] or f["VacuumLow"]
 	blocked = held or robotFault
 
 	if not ctl.get("enabled"):
-		# Manual, or the simulation switched off. The auto cycle stops; the
-		# lift axis does NOT, because manual jog is the whole point of the mode
-		# and an operator jogging an axis is not the cell running a pattern.
+		# The auto cycle stops; manual jog of the lift still runs.
 		_jog(s, dt, dtr, ctl, blocked, False, None)
 		_writeStopped(s, f, blocked, robotFault, held)
 		return
@@ -879,13 +615,7 @@ def _motion(s, dt, f, blocked, robotFault, held):
 		return "Fault" if robotFault else "Held"
 
 	if s["wasBlocked"]:
-		# Coming back from a stop is not instant on a real cell: the robot
-		# re-homes before it will run the pattern again. It is also the only
-		# time the contract's "Homing" state is honest.
-		# The cases this cycle reserved were never picked, so they are still on
-		# the belt and must go back to the buffer. Without this a fault silently
-		# ate a pick's worth of product every time it was injected: debited at
-		# _startCycle, never placed, never returned.
+		# Re-home after a stop, and give the reserved but unpicked cases back to the buffer.
 		s["buf"] = min(_geo()["bufferMax"], s["buf"] + _staged(s))
 		s["wasBlocked"] = False
 		s["homing"] = 2.5
@@ -930,26 +660,14 @@ def _motion(s, dt, f, blocked, robotFault, held):
 
 
 def _staged(s):
-	"""Cases the running cycle has reserved that are STILL on the conveyor.
-
-	_startCycle debits the buffer the moment it commits, because it has to know
-	it has product before it will move. But the cases do not leave the belt until
-	the cups seal, which is Approach + Descend + a third of Grip - about 3.1 s
-	later. Publishing the buffer alone told the 3D page to delete the cartons at
-	cycle start, so the arm descended onto an empty belt and the staging eyes
-	went clear with boxes still sitting in them.
-
-	Derived from the phase rather than stored, so it cannot drift out of step
-	with the arm it describes.
-	"""
+	"""Cases the running cycle has reserved that are still on the belt, until the cups seal."""
 	if s["idle"]:
 		return 0
 	name = PHASES[s["phase"]][0]
 	if name in ("Approach", "Descend"):
 		return _geo()["pick"]
 	if name == "Grip":
-		# The same 0.35 the vacuum seals at: the instant the cups take the cases
-		# is the instant they stop being on the conveyor. Both read it from here.
+		# The same 0.35 the vacuum seals at in _grip().
 		return 0 if s.get("frac", 0.0) > 0.35 else _geo()["pick"]
 	return 0
 
@@ -959,9 +677,6 @@ def _endPhase(s):
 	name = PHASES[s["phase"]][0]
 	if name != "Release":
 		return
-	# The cases are on the pallet the instant the gripper lets go, so this is
-	# where the pallet count moves - not at the end of the cycle, which would
-	# show the arm already halfway home before the pallet changed.
 	g = _geo()
 	st = s["st"][s["active"]]
 	placed = min(g["pick"], g["perPallet"] - st["cases"])
@@ -970,22 +685,14 @@ def _endPhase(s):
 	if st["cases"] >= g["perPallet"]:
 		st["complete"] = True
 
-	# Raise the travel height NOW, for the retract that follows, to whatever
-	# the next cycle will need. The stack is one layer taller than it was when
-	# this cycle worked its height out, and doing it here means the extra rise
-	# happens on the vertical retract leg instead of part-way through the swing
-	# back - the arm goes up and then across, rather than climbing as it goes.
+	# Raise the travel height now, so the extra rise for the taller stack
+	# happens on the vertical retract and not part-way through the swing back.
 	nextLayer = min(g["layers"] - 1, st["cases"] // g["perLayer"])
 	s["safeY"] = max(s["safeY"], _safeWristY(s, nextLayer))
 
 
 def _availableStation(s):
-	"""The station the robot can build on, preferring the one it is on.
-
-	When a pallet completes the robot moves to the other station immediately -
-	that is the whole reason a cell has two - and only stops when neither is
-	available, which is exactly what the wrapper fault engineers.
-	"""
+	"""The station to build on, preferring the current one; None if neither can take cases."""
 	order = [s["active"]] + [n for n in P.STATIONS if n != s["active"]]
 	for n in order:
 		st = s["st"][n]
@@ -1006,17 +713,13 @@ def _startCycle(s, f):
 	st = s["st"][n]
 	s["layer"] = min(g["layers"] - 1, st["cases"] // g["perLayer"])
 	s["slot"] = (st["cases"] % g["perLayer"]) // g["pick"]
-	# Worked out ONCE per cycle, not per tick: it depends on the stacks, and a
-	# travel height that moved under the arm halfway through a swing would jerk
-	# the wrist every time a case landed.
+	# Once per cycle: a travel height that moved mid-swing would jerk the wrist.
 	s["safeY"] = _safeWristY(s, s["layer"])
 	s["buf"] -= g["pick"]
 	s["idle"] = False
 	s["phase"] = 0
 	s["pf"] = 0.0
 	s["from"] = list(s["pose"])
-	# Real cycles are not identical. A few percent of scatter is what makes the
-	# cases/min readout move the way an operator expects it to.
 	s["cycleTime"] = P.CYCLE_S * (0.97 + 0.09 * random.random())
 	return True
 
@@ -1033,33 +736,20 @@ def _material(s, dt, f, held):
 	while s["carton"] >= g["cartonPitch"] and guard < 20:
 		guard += 1
 		s["carton"] -= g["cartonPitch"]
-		# bufferMax is how many cases the accumulation zone HOLDS, so cases the
-		# robot has reserved but not yet lifted take up room in it. Capping on
-		# the logical buffer alone let the belt draw eight cartons in a zone
-		# stated to hold six. The barcode still advances either way: the scanner
-		# is at the upstream end, ahead of the zone that is full.
+		# Staged cases still take room in the zone. The barcode advances either
+		# way: the scanner is upstream of the zone that is full.
 		if s["buf"] < g["bufferMax"] - _staged(s):
 			s["buf"] += 1
 		s["barcode"] += 1
 		s["lastBarcode"] = "T%05d" % s["barcode"]
-		# One no-read in every 37 cartons. It is not a fault - it is the thing
-		# an operator sees often enough to know what the ScanOK lamp means.
 		s["scanOK"] = (s["barcode"] % 37) != 0
 
 
 def _covered(g, buf, offset):
-	"""Is there a carton standing on this point of the belt?
-
-	The queue holds `buf` cartons from the stop line back, each one caseD long
-	on a caseD + gap pitch. An eye is blocked when its offset falls inside one
-	of them. This is geometry, not a phase: the beam is red because a box is
-	in front of it, which is what the lamp claims.
-	"""
+	"""True if one of `buf` queued cartons stands over this offset from the stop line."""
 	pitch = g["caseD"] + QUEUE_GAP_M
-	# Half a case, plus half the gap between two of them. A beam has width and
-	# a carton has flaps, and without the tolerance an eye sited exactly on the
-	# join between two boxes - PE_Carton is, on the default belt, by 25 mm -
-	# reads clear for ever with product standing on it.
+	# Half a case plus half the gap: on the default belt PE_Carton sits on the
+	# join between two boxes and would otherwise never read blocked.
 	half = g["caseD"] / 2.0 + QUEUE_GAP_M / 2.0
 	for i in range(int(buf)):
 		if abs(offset - i * pitch) <= half:
@@ -1068,20 +758,11 @@ def _covered(g, buf, offset):
 
 
 def _eyes(s, f):
-	"""The six photo-eyes, blocked by the cartons that are actually standing
-	on the belt, plus the derived PE_Clear.
-
-	Geometric, off the same queue the page draws, so a beam can never read
-	CLEAR with a carton sitting in it.
-	"""
+	"""The six photo-eyes and PE_Clear, blocked by the cartons actually on the belt."""
 	g = _geo()
-	# Cases reserved by a cycle that has not lifted them yet are still physically
-	# in the beams, so the eyes count them - the same number the page draws.
 	buf = s["buf"] + _staged(s)
 	if f["ConveyorJam"]:
-		# A jam IS a blocked eye, and it latches: which eyes are made is the
-		# diagnosis an operator reads off the panel to find where the carton
-		# stopped, so it must not keep moving with the queue behind it.
+		# A jam latches its eyes: which ones are made tells the operator where the carton stopped.
 		return {"PE_Infeed": True, "PE_Carton": True, "PE_Length1": True,
 		        "PE_Length2": False, "PE_Clear": False,
 		        "PE_InPos1": buf >= 1, "PE_InPos2": buf >= 1}
@@ -1089,22 +770,14 @@ def _eyes(s, f):
 	eyes = {}
 	for key, d in off.items():
 		eyes[key] = _covered(g, buf, d)
-	# The three along the run are what "clear" means - the two staging eyes at
-	# the pick point are made whenever a set is waiting, which is most of the
-	# time, and folding them in would make PE_Clear permanently false.
+	# Only the three run eyes: the staging eyes are made whenever a set is waiting.
 	eyes["PE_Clear"] = not (eyes["PE_Carton"] or eyes["PE_Length1"]
 	                        or eyes["PE_Length2"])
 	return eyes
 
 
 def _stations(s, dt, f):
-	"""Discharge a finished pallet, and put an empty one in its place.
-
-	Blocked by WrapperFilmFeed on purpose: a completed pallet with nowhere to
-	go is the most common real reason a palletiser stops, and it stops the cell
-	slowly - one station, then the other - which is far more interesting to
-	watch than a fault that stops everything at once.
-	"""
+	"""Discharge a finished pallet and put an empty one in its place, unless WrapperFilmFeed blocks it."""
 	for n in P.STATIONS:
 		st = s["st"][n]
 		if not st["complete"]:
@@ -1128,7 +801,7 @@ def _discharging(s, n):
 
 
 def _grip(s, state, f):
-	"""Gripper and vacuum, which follow the phase rather than the other way."""
+	"""(gripper closed, vacuum kPa), following the phase."""
 	if f["VacuumLow"]:
 		return True, LOW_VACUUM_KPA + random.uniform(-1.5, 1.5)
 	if state not in ("Picking", "Placing"):
@@ -1147,23 +820,13 @@ def _grip(s, state, f):
 
 
 def _jog(s, dt, dtr, ctl, blocked, autoRunning, solvedLift):
-	"""Hold-to-run jog on the lift axis. Returns (Lift_mm, LiftTarget_mm).
-
-	The HMI sets a momentary bit; the motion happens HERE. That split is the
-	point of the exercise - a screen that moved the axis itself would carry on
-	moving it after the interlock dropped, after the operator let go, and after
-	the browser tab closed.
-
-	Four independent reasons not to move, and each one is checked here even
-	though the screen already greys the button out. The panel disabling a
-	button and the controller refusing the motion are not the same safeguard,
-	and a machine builder will ask which one you have.
-	"""
+	"""Hold-to-run jog on the lift axis. Returns (Lift_mm, LiftTarget_mm)."""
+	# Interlocks are checked here even though the screen greys the button:
+	# the panel and the controller are separate safeguards.
 	up = bool(ctl.get("jogUp"))
 	down = bool(ctl.get("jogDown"))
 
-	# The watchdog runs FIRST and runs in every mode, including auto: a bit
-	# stuck on is worth clearing whether or not anything would have moved.
+	# The watchdog runs first and in every mode: a stuck bit is cleared even in auto.
 	if up or down:
 		s["jogHeld"] += dtr
 	else:
@@ -1177,18 +840,13 @@ def _jog(s, dt, dtr, ctl, blocked, autoRunning, solvedLift):
 		up = down = False
 
 	if autoRunning:
-		# The auto cycle owns the axis. The jog bits are ignored, and the
-		# manual position tracks the cycle so that a drop into manual starts
-		# from where the column actually is rather than where it was last
-		# jogged to, minutes ago.
+		# Auto owns the axis; track it so a drop into manual starts where the column is.
 		s["jogLift"] = solvedLift
 		s["jogTarget"] = solvedLift
 		return solvedLift, solvedLift
 
 	if up and down:
-		# A real controller treats both directions commanded at once as a
-		# fault condition, not a race to be resolved. Neither bit is cleared:
-		# it is the panel's mistake to fix, and clearing it would hide it.
+		# Both directions at once is a fault, not a race; the bits are left for the panel to clear.
 		direction = 0
 	elif blocked:
 		direction = 0
@@ -1219,13 +877,7 @@ def _zoneRow(state, running, fault):
 
 
 def _writeStopped(s, f, blocked, robotFault, held):
-	"""The auto cycle is off - Manual, or SimEnabled false.
-
-	It says so honestly rather than leaving stale values, and it still
-	publishes the lift axis, the motor contactor and the fault, because in
-	Manual all three are live: the operator is jogging, and the interlocks that
-	stop them jogging have to read correctly on the same screen.
-	"""
+	"""Publish the stopped cell; lift, motors and fault stay live because Manual jogs."""
 	state = "Fault" if robotFault else ("Held" if held else "Idle")
 	paths = ["Line/Running", "Line/CasesPerMin", "Robot/State",
 	         "Robot/Lift_mm", "Robot/LiftTarget_mm",
@@ -1245,14 +897,7 @@ def _writeStopped(s, f, blocked, robotFault, held):
 
 
 def _guardWrite(s, f, held, paths, vals):
-	"""Drive Safety/GuardsClosed only when this module has something to say.
-
-	It is a field input - a guard switch - so the simulator forces it FALSE
-	while the GuardOpen fault stands, and forces it back TRUE once on the
-	transition out. In between it leaves the tag alone, which is what lets a
-	test (or an operator screen) write it false and have that mean something
-	instead of being overwritten 500 ms later.
-	"""
+	"""Force GuardsClosed false while GuardOpen stands and true once after; otherwise leave it alone."""
 	if f["GuardOpen"]:
 		s["guardWasHeld"] = True
 		paths.append("Safety/GuardsClosed")
@@ -1266,9 +911,7 @@ def _guardWrite(s, f, held, paths, vals):
 
 def _write(s, dt, dtr, f, ctl, state, blocked, robotFault, held):
 	"""Everything the cell is, written in one round trip."""
-	# Task space in, joints out. The interpolation above moved the WRIST; this
-	# is the only place joint angles exist, so the angles the 3D page receives
-	# are by construction a pose the arm can actually hold.
+	# The only place joint angles exist, solved from the wrist, so every pose the page gets is reachable.
 	j1, radius, wristY, j4 = s["pose"]
 	j2, j3, solvedLift = _solve(radius, wristY)
 	grip, vac = _grip(s, state, f)
@@ -1277,8 +920,7 @@ def _write(s, dt, dtr, f, ctl, state, blocked, robotFault, held):
 	g = _geo()
 	producing = state in ("Picking", "Placing")
 	inst = (g["pick"] * 60.0 / s["cycleTime"]) if producing else 0.0
-	# Eight machine-seconds of memory: long enough that the readout does not
-	# flicker between phases, short enough that a jam shows inside a cycle.
+	# Eight machine-seconds of smoothing: no flicker between phases, a jam still shows within a cycle.
 	s["cpm"] += (inst - s["cpm"]) * min(1.0, dt / 8.0)
 
 	air = 620.0 + 6.0 * math.sin(s["zclock"] / 11.0) + random.uniform(-3.0, 3.0)
@@ -1311,16 +953,9 @@ def _write(s, dt, dtr, f, ctl, state, blocked, robotFault, held):
 		"Conveyor/Gate1_Up", "Conveyor/Gate2_Up", "Conveyor/Clamp_Extended",
 		"Conveyor/LastBarcode", "Conveyor/ScanOK",
 	]
-	# Running means PRODUCING. A cell that is held, faulted, starved of cartons
-	# or has nowhere left to put a pallet is stopped, and saying so is the
-	# whole point of the lamp - "not faulted" is a different question and
-	# Safety/ already answers it.
+	# Running means producing; "not faulted" is Safety/'s question.
 	running = (not blocked) and (not s["idle"])
 
-	# Who owns the lift. While the cycle runs it is the cycle's, and the jog
-	# bits are ignored; the moment the cell goes idle - starved, both pallets
-	# full, held - the operator can jog it, which is exactly when they would
-	# want to.
 	lift, liftTarget = _jog(s, dt, dtr, ctl, blocked, running, solvedLift)
 
 	vals = [
@@ -1362,9 +997,7 @@ def _write(s, dt, dtr, f, ctl, state, blocked, robotFault, held):
 		         int(min(g["layers"], st["cases"] // g["perLayer"])),
 		         bool(st["complete"])]
 
-	# The other three robot cells on the line. They are not modelled - only
-	# Robot 1 has a 3D model to drive - but a zone overview where three of the
-	# eight rows never change is a zone overview nobody believes.
+	# Only Robot 1 is modelled; the other zones are animated so their rows move.
 	zst = "held" if held else ""
 	zone = {}
 	zone["Z1"] = (state in ("Picking", "Placing"), robotFault)
@@ -1377,9 +1010,7 @@ def _write(s, dt, dtr, f, ctl, state, blocked, robotFault, held):
 	zone["Z8"] = (bool(s.get("c1")), f["ConveyorJam"])
 
 	if not s["named"]:
-		# Once after a reload, and again whenever the geometry changes: the
-		# zone names, and the pattern each station is building - which is the
-		# Config tags' pattern, not a string typed at install.
+		# After a reload or a geometry change: zone names, and each station's pattern from Config.
 		for zid in P.ZONE_IDS:
 			paths.append("Zones/%s/Name" % zid)
 			vals.append(P.ZONE_NAME[zid])

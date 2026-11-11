@@ -1,31 +1,7 @@
 def doGet(request, session):
-	"""Read-only control surface for the palletising cell demo.
-
-	GET answers questions and changes nothing. Anyone on the network can ask
-	it, which is what lets the 3D page poll ?cmd=state from an iframe with no
-	login prompt, and what lets a test read the cell without a credential.
-
-	    ?cmd=state                  the live cell, as the 3D page polls it
-	    ?cmd=status                 a one-screen account of the whole cell
-	    ?cmd=check                  report on every setup item, change nothing
-	    ?cmd=faults                 the injectable faults, and what each does
-	    ?cmd=alarms                 this demo's standing alarms
-	    ?cmd=alarmcheck&tag=...     why an alarm is or is not standing
-	    ?cmd=version                which build this gateway is running
-	    ?cmd=scene                  the cell's parts list, from Machine/Scene
-
-	Everything that WRITES - setup, fix, fault, clear, reset, speed, mode,
-	jog, guards - left this route deliberately. An unauthenticated GET that
-	opens the guard circuit or jogs the arm is not a demonstration of access
-	control, and a demo whose third pillar is security zones cannot ship one.
-	Those commands live on doPost, which requires authentication, and on the
-	Setup screen, which runs them in-process as the logged-in session.
-
-	The docstring is INSIDE the def on purpose. Anything at all above
-	`def doGet` in a WebDev python resource - a docstring, a comment, a blank
-	line - makes the endpoint return an empty HTTP 200 with nothing in the log
-	and no error anywhere.
-	"""
+	"""Read-only routes (?cmd=state, status, check, faults, alarms, ...); a write cmd gets 405."""
+	# Docstring inside the def on purpose: anything above `def doGet` makes the
+	# route return an empty 200 with nothing in the log.
 	import traceback
 
 	READS = ["state", "status", "version", "check", "faults", "alarms",
@@ -37,9 +13,6 @@ def doGet(request, session):
 	cmd = params.get('cmd', 'status')
 
 	def refuse(code, body):
-		# The status code is the part a script can act on; the body is the
-		# part a human reads. Both, always - a bare 403 sends the reader back
-		# to the source to find out what it wanted.
 		try:
 			request['servletResponse'].setStatus(code)
 		except:
@@ -48,9 +21,7 @@ def doGet(request, session):
 
 	try:
 		if cmd == 'state':
-			# The hot path: polled four times a second by the 3D cell page, so
-			# it answers with the snapshot and nothing else - no wrapper, no
-			# extra reads, no branch above it that could get expensive.
+			# Polled at 4 Hz by the 3D page: keep this branch first and cheap.
 			return {'json': MachineDemo.api.state()}
 
 		if cmd == 'status':
@@ -64,11 +35,6 @@ def doGet(request, session):
 			                 'project': system.util.getProjectName()}}
 
 		if cmd == 'scene':
-			# The cell as DATA: the parts list held in the Machine/Scene view's
-			# custom properties, where a person edits it in the Designer. Read
-			# by the 3D page at load. It never raises - if the document cannot
-			# be read it says why, and the page falls back to its built-in
-			# geometry rather than rendering nothing.
 			return {'json': MachineDemo.scene.document()}
 
 		if cmd == 'check':
@@ -83,11 +49,7 @@ def doGet(request, session):
 			                 'alarms': MachineDemo.plant.liveAlarms()}}
 
 		if cmd == 'alarmcheck':
-			# Why is nothing alarming? Four different answers look identical
-			# on an empty alarm table: the alarm is not defined on the tag,
-			# it is defined but disabled, it is defined and enabled but the
-			# value has not crossed, or it HAS crossed and queryStatus is
-			# being asked the wrong question. This says which.
+			# Tells apart: alarm not defined, disabled, not crossed, or queryStatus asked wrongly.
 			prov = MachineDemo.plant.PROVIDER
 			path = params.get('tag', 'Faults/ConveyorJam')
 			full = MachineDemo.plant.tag(path)

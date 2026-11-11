@@ -1,8 +1,6 @@
 def doGet(request, session):
-	# NOTE: `def doGet` must be the first byte of this file. A docstring or even
-	# a comment above it makes the route return an empty HTTP 200 with nothing
-	# in the log. The explanation of what this resource is for lives in the
-	# MachineDemo.assets script module instead.
+	"""Serve the vendored three.js and occt-import-js files (?f=); f=probe shows the paths tried."""
+	# `def doGet` must be the first byte of this file, or the route returns an empty 200.
 	import os
 	from java.lang import System
 
@@ -11,8 +9,7 @@ def doGet(request, session):
 
 	FILES = {
 		'three': ('three.min.js', 'application/javascript'),
-		# occt-import-js: OpenCASCADE's STEP reader compiled to WASM (LGPL-2.1,
-		# see NOTICE). The CAD page loads it only when a STEP model is shown.
+		# occt-import-js is LGPL-2.1 (see NOTICE).
 		'occt': ('occt-import-js.js', 'application/javascript'),
 		'occt-wasm': ('occt-import-js.wasm', 'application/wasm'),
 	}
@@ -37,9 +34,6 @@ def doGet(request, session):
 		return out
 
 	if name == 'probe':
-		# Which of the candidate paths actually exists on THIS gateway. Serving
-		# a vendored file only works if the path resolves, and a 404 with no
-		# explanation is the worst way to find out during a demonstration.
 		found = []
 		for p in candidates('lib', 'three.min.js'):
 			found.append({'path': p, 'exists': os.path.exists(p)})
@@ -57,9 +51,8 @@ def doGet(request, session):
 	for path in candidates('lib', filename):
 		if os.path.exists(path):
 			if filename.endswith('.wasm'):
-				# Binary goes to the servlet stream; returned as 'response' it
-				# is re-encoded as text and arrives corrupt (docs/CAD-VIEWER.md).
-				# application/wasm is what instantiateStreaming insists on.
+				# Binary goes to the servlet stream: as 'response' it is re-encoded as text.
+				# instantiateStreaming requires the application/wasm content type.
 				data = system.file.readFileAsBytes(path)
 				resp = request['servletResponse']
 				resp.setContentType(contentType)

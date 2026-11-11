@@ -1,12 +1,6 @@
 """
-MachineDemo.plant - the cell's names, paths, constants and tag helpers.
-
-One palletising cell, four robot zones, two pallet build stations. Everything
-in the project that needs to know the provider name, a tag path, the machine's
-geometry or its cycle budget reads it from here, so those facts appear once.
-
-The provider name appears in exactly one place - PROVIDER - because a demo that
-spells it out in forty bindings is a demo that cannot be renamed.
+The palletising cell's names, tag paths, default geometry, faults and tag/alarm
+helpers - the one place the provider name and machine constants are spelled out.
 """
 
 VERSION = "1.19.2"
@@ -21,31 +15,12 @@ LOG = system.util.getLogger("MachineDemo.plant")
 
 
 def tag(path):
-	"""A tag path in this demo's provider."""
+	"""Return path prefixed with this demo's provider, e.g. "[MachineDemo]Robot/J1_deg"."""
 	return "[%s]%s" % (PROVIDER, path)
 
 
-# ---------------------------------------------------------------------------
-# the machine
-# ---------------------------------------------------------------------------
-# The machine's shape is TAGS - [<provider>]Config/* - and these are only the
-# defaults those tags are created with. The simulator, the 3D page and the
-# screens all read the tags, so a different machine is fifteen tag writes and
-# nothing here has to change. GEOMETRY is the one list of them: tag path, the
-# key it travels under in ?cmd=state, and the default. MachineDemo.tagdata
-# creates the tags from it, MachineDemo.api publishes them from it and
-# MachineDemo.sim derives its pattern, heights and reach from it.
-#
-# With these defaults the pattern is 12 cases a layer in a 4 x 3 grid, placed a
-# column of 3 at a time, 5 layers to a pallet - so a nominal 12.6 s cycle is
-# 14.3 cases a minute, which is what a mid-size case palletiser actually does.
-#
-# The stations sit 1.98 m from the robot base. They were 2.2 m until 03/09/2026,
-# when the arm was first asked to place at the pattern's actual case positions
-# rather than at four hand-picked offsets and turned out to be 64 mm short of
-# the far column of a 1.2 m pallet on a 2.5 m arm. The reach report in
-# MachineDemo.sim is what found it, and would find it again.
-
+# (tag path, ?cmd=state key, default). Only the defaults the Config tags are
+# created with; everything live reads the tags.
 GEOMETRY = [
 	("Config/CaseW_mm", "caseW_mm", 300),
 	("Config/CaseD_mm", "caseD_mm", 250),
@@ -65,31 +40,23 @@ GEOMETRY = [
 ]
 GEOMETRY_DEFAULT = dict((key, default) for path, key, default in GEOMETRY)
 
-# Whole machines, as overrides on the defaults. A presenter picks one from the
-# 3D page's geometry panel and the cell, the pattern and the arm all follow -
-# the same fifteen writes an application engineer would make in the Designer,
-# just made at once. Every value here has been checked against the arm's reach
-# (see MachineDemo.sim.geometryInfo) - a preset the robot cannot build is a
-# demo that stops on case 34 with no explanation.
+# Overrides on the defaults, picked from the 3D page. Check any new preset
+# against the arm's reach (MachineDemo.sim.geometryInfo).
 GEOMETRY_PRESETS = [
 	("default", "Default cell",
 	 "300 x 250 x 220 mm cases, 12 a layer, 5 layers, 1200 x 1000 pallet", {}),
 	("euro-tall", "Tall cases, Euro pallet",
 	 "350 mm cases, 8 a layer, 4 layers, on a 1200 x 800 Euro pallet",
 	 {"caseH_mm": 350, "palletD_mm": 800, "casesPerLayer": 8, "layers": 4}),
-	# Five layers, not seven: the Overview draws a fixed strip of five layer
-	# pips per station, so a preset with more layers than that completes a
-	# pallet with pips that never light. Every preset stays at or under five
-	# until that strip is built from the Layers tag.
+	# At most five layers: the Overview draws a fixed strip of five layer pips.
 	("small-dense", "Small cases, dense",
 	 "200 x 200 x 150 mm cases, 30 a layer, 5 layers",
 	 {"caseW_mm": 200, "caseD_mm": 200, "caseH_mm": 150,
 	  "casesPerLayer": 30, "layers": 5}),
 ]
 
-# The defaults, under the names the rest of the project has always used. They
-# describe the DEFAULT machine only - the live numbers are the Config tags, and
-# MachineDemo.sim derives everything below from those every tick.
+# The DEFAULT machine only; MachineDemo.sim derives the live values from the
+# Config tags every tick.
 CASES_PER_PICK = 3
 SLOTS_PER_LAYER = 4
 CASES_PER_LAYER = GEOMETRY_DEFAULT["casesPerLayer"]                  # 12
@@ -98,18 +65,11 @@ CASES_PER_PALLET = CASES_PER_LAYER * LAYERS_PER_PALLET               # 60
 
 PATTERN_NAME = "%d x %d interlock" % (LAYERS_PER_PALLET, CASES_PER_LAYER)
 
-# Nominal pick-and-place cycle, in MACHINE seconds. SimSpeed is a multiplier on
-# how fast machine time runs against the wall clock; it does not make the
-# machine faster, so the reported cycle time and cases/min stay honest at any
-# speed.
+# Nominal cycle in MACHINE seconds; SimSpeed scales machine time against the
+# wall clock, so reported cycle time and cases/min hold at any speed.
 CYCLE_S = 12.6
 
-# The arm itself - link lengths, column travel - lives in MachineDemo.sim and
-# only there, because it is only ever used by the IK solve, and the 3D page
-# draws the same two links. Where the conveyor and the pallets are and how tall
-# a case is are NOT constants anywhere any more: they are the Config tags, read
-# live. Two copies of a case height is how a palletiser comes to stack layers
-# the arm cannot reach, and that is exactly the defect this replaced.
+# Arm dimensions live only in MachineDemo.sim.
 
 STATIONS = [1, 2]
 
@@ -126,9 +86,7 @@ ZONE_META = [
 ZONE_IDS = [z[0] for z in ZONE_META]
 ZONE_NAME = dict(ZONE_META)
 
-# The five faults a presenter can inject, in the order they read on a control
-# strip: the two that stop the machine, then the two that stop the product,
-# then the one that stops the pallet leaving.
+# Injectable faults, in control-strip order.
 FAULTS = ["GuardOpen", "RobotAxisFault", "VacuumLow", "ConveyorJam",
           "WrapperFilmFeed"]
 
@@ -140,8 +98,6 @@ FAULT_LABEL = {
 	"WrapperFilmFeed": "Wrapper film feed fault",
 }
 
-# What each fault does to the cell. This is the demo's script, and it is here
-# rather than buried in the simulator so a presenter can read it.
 FAULT_EFFECT = {
 	"GuardOpen": "Drops the guard circuit: motors off, robot HELD in place, "
 	             "infeed and transfer conveyors stop.",
@@ -162,16 +118,8 @@ ROBOT_FAULT_TEXT = {
 }
 
 
-# ---------------------------------------------------------------------------
-# tag reads and writes
-# ---------------------------------------------------------------------------
-# Every screen and every route reads through these, so a read is always one
-# round trip and a bad-quality tag is always None rather than an exception that
-# blanks a whole panel.
-
-
 def read(paths):
-	"""Read many tags at once, as plain Python values. Bad quality -> None."""
+	"""Read provider-relative paths in one call; a bad-quality tag reads as None, never raises."""
 	full = [tag(p) for p in paths]
 	try:
 		qvs = system.tag.readBlocking(full)
@@ -189,19 +137,20 @@ def read(paths):
 
 
 def readOne(path, default=None):
+	"""Read one tag; return default if it is missing or bad quality."""
 	v = read([path])[0]
 	return default if v is None else v
 
 
 def readDict(mapping):
-	"""{key: tagpath} -> {key: value}. One round trip."""
+	"""Read {key: tagpath} in one call and return {key: value}."""
 	keys = list(mapping.keys())
 	vals = read([mapping[k] for k in keys])
 	return dict(zip(keys, vals))
 
 
 def write(mapping):
-	"""{tagpath: value} -> written in one call. Never raises."""
+	"""Write {tagpath: value} in one call; return the number written, 0 on failure."""
 	if not mapping:
 		return 0
 	keys = list(mapping.keys())
@@ -216,7 +165,7 @@ def write(mapping):
 
 
 def writePaths(paths, values):
-	"""Parallel lists, for the simulator's hot path - no dict churn per tick."""
+	"""Write parallel lists of paths and values; return the number written, 0 on failure."""
 	if not paths:
 		return 0
 	try:
@@ -228,20 +177,10 @@ def writePaths(paths, values):
 		return 0
 
 
-# ---------------------------------------------------------------------------
-# alarms
-# ---------------------------------------------------------------------------
-
-
 def liveAlarms():
-	"""This demo's standing alarms, newest first, as plain dicts.
-
-	`source` is not optional and it is not a wildcard on the provider alone:
-	queryStatus wants prov:<provider>:/tag:* - prov:<provider>:* silently
-	matches nothing. Without the filter this counts every alarm on the gateway,
-	which on a shared demo box is somebody else's plant.
-	"""
+	"""Return this provider's standing alarms as dicts: active first, then unacked, then by label."""
 	try:
+		# prov:<provider>:* silently matches nothing; the /tag:* part is required.
 		events = system.alarm.queryStatus(
 			source=["prov:%s:/tag:*" % PROVIDER])
 	except:
@@ -268,15 +207,9 @@ def liveAlarms():
 
 
 def _field(event, fn, default):
-	"""One accessor on one AlarmEvent, or the default.
-
-	Each accessor is guarded SEPARATELY and not the row as a whole. Guarding
-	the row means one accessor this gateway's build does not have - isActive()
-	was the one - silently drops the entire alarm, and an alarm list that comes
-	back EMPTY when eleven alarms are standing is the worst possible way to
-	fail. Whether an event is active is read off its state string for the same
-	reason: the string is on every 8.x build.
-	"""
+	"""fn(event), or default if it raises."""
+	# Guarded per field, not per row: an accessor missing on some builds
+	# (isActive) would otherwise drop the whole alarm.
 	try:
 		return fn(event)
 	except:
@@ -284,7 +217,7 @@ def _field(event, fn, default):
 
 
 def alarmCounts():
-	"""How many are active, and how many of those are unacknowledged."""
+	"""Return {"active": n, "unacked": n} for this demo's alarms; unacked counts active ones only."""
 	active = 0
 	unacked = 0
 	for a in liveAlarms():
