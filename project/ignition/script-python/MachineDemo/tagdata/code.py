@@ -100,6 +100,10 @@ def _line():
 		# Journal for the Alarms screen, set by setup per edition (EdgeJournal on Edge).
 		# A wrong name shows an empty history and no error.
 		_str("JournalName", ""),
+		# Written by MachineDemo.ui.publishAlarms on the CellSim timer.
+		_atomic("AlarmTotals", "Document", MachineDemo.ui.alarmTotals([])),
+		_atomic("AlarmMessages", "Document", MachineDemo.ui.alarmMessages([])),
+		_atomic("AlarmBanner", "Document", MachineDemo.ui.alarmBanner([])),
 	])
 
 

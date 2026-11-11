@@ -36,7 +36,7 @@ ending `· v<version>` (or `(dev)` and `· dev` for a development build).
 ## Tag contract — provider `MachineDemo` (STANDARD, created by setup)
 
 All paths below are relative to `[MachineDemo]`. Types are Ignition dataTypes.
-126 tags in nine top-level nodes: eight folders and one UDT instance.
+129 tags in nine top-level nodes: eight folders and one UDT instance.
 
 ```
 Config/        CaseW_mm 300 | CaseD_mm 250 | CaseH_mm 220                (Int4, mm)
@@ -50,6 +50,9 @@ Config/        CaseW_mm 300 | CaseD_mm 250 | CaseH_mm 220                (Int4, 
 Line/          Running Bool | Mode String("Auto"/"Manual") | CasesPerMin Float8
                CycleTime_s Float8 | CasesTotal Int4 | SimEnabled Bool
                SimSpeed Float8 | ShiftTarget Int4
+               AlarmTotals | AlarmMessages | AlarmBanner Document
+                 (written by the CellSim timer via MachineDemo.ui.publishAlarms;
+                 the Alarms, Manual and Overview views bind to them)
 
 Safety/        EStopOK Bool | GuardsClosed Bool | AirPressureOK Bool
                InterfacesOK Bool | AirPressure_kPa Float8

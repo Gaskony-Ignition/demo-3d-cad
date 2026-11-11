@@ -68,7 +68,7 @@ screen as STL, a zip of STLs, or STEP.*
 ## How to use it
 
 Import `build/Machine_HMI_Demo-<version>.zip` in the Designer, then open the
-**Setup** page and press the one button. Setup writes 126 tags and 15 alarms
+**Setup** page and press the one button. Setup writes 129 tags and 15 alarms
 into its own `MachineDemo` tag provider and starts the simulator. What it does
 about a database depends on the gateway:
 

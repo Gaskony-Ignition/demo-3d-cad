@@ -9387,16 +9387,11 @@
     },
     "custom.msgs": {
       "binding": {
-        "type": "expr",
+        "type": "tag",
         "config": {
-          "expression": "toStr(now(4000))"
-        },
-        "transforms": [
-          {
-            "type": "script",
-            "code": "\treturn MachineDemo.ui.alarmMessages()"
-          }
-        ]
+          "mode": "direct",
+          "tagPath": "[MachineDemo]Line/AlarmMessages"
+        }
       }
     }
   }

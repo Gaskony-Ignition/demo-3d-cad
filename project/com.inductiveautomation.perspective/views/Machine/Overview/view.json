@@ -7464,16 +7464,11 @@
   "propConfig": {
     "custom.alm": {
       "binding": {
-        "type": "expr",
+        "type": "tag",
         "config": {
-          "expression": "toStr(now(3000))"
-        },
-        "transforms": [
-          {
-            "type": "script",
-            "code": "\treturn MachineDemo.ui.alarmBanner()"
-          }
-        ]
+          "mode": "direct",
+          "tagPath": "[MachineDemo]Line/AlarmBanner"
+        }
       }
     }
   }

@@ -27,7 +27,7 @@ becomes real everywhere at once.
 | `[MachineDemo]Robot/*` | memory tags written by the simulator | OPC tags on the robot controller or the PLC |
 | `Robot` UDT | one instance, no device | one instance **per arm**, parameterised with the device name |
 | `Line/SimEnabled`, `SimSpeed` | control the simulation | deleted, they mean nothing |
-| `CellSim` timer script | runs the model twice a second | disabled |
+| `CellSim` timer script | runs the model and publishes the alarm summary tags twice a second | `sim.tick()` removed; `ui.publishAlarms()` stays, the alarm screens read its tags |
 | `MachineDemo.api` | unchanged | unchanged |
 | `cell3d` page | unchanged | unchanged |
 | Screens, alarms | unchanged | unchanged |

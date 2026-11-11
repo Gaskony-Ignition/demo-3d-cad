@@ -1755,16 +1755,11 @@
   "propConfig": {
     "custom.counts": {
       "binding": {
-        "type": "expr",
+        "type": "tag",
         "config": {
-          "expression": "toStr(now(3000))"
-        },
-        "transforms": [
-          {
-            "type": "script",
-            "code": "\treturn MachineDemo.ui.alarmTotals()"
-          }
-        ]
+          "mode": "direct",
+          "tagPath": "[MachineDemo]Line/AlarmTotals"
+        }
       }
     }
   }

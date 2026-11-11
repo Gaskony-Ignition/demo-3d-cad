@@ -2,6 +2,8 @@
   "exceptions": [
     {"file": "Machine/Manual/view.json", "rule": "PollingIntervalRule", "match": "now(250)",
      "reason": "the hidden jog/seek driver steps the lift once per tick; at 1 s the jog is four times slower"},
+    {"file": "Machine/Manual/view.json", "rule": "V3", "match": "root/Footer/Engine props.text",
+     "reason": "the hidden jog/seek driver steps the lift once per 250 ms tick from this view's own jog, seek and target props, so it has to run per session"},
     {"file": "Machine/Scene/view.json", "rule": "UnusedCustomPropertiesRule", "match": "'units'",
      "reason": "MachineDemo.scene.document() reads these props straight from view.json to serve admin?cmd=scene"},
     {"file": "Machine/Scene/view.json", "rule": "UnusedCustomPropertiesRule", "match": "'consts'",

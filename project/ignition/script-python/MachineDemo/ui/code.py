@@ -281,13 +281,9 @@ def liftStep(view):
 	return ""
 
 
-def alarmMessages():
-	"""The Manual view's 20 message rows: standing alarms, else one "Cell healthy" row, padded with blanks."""
+def alarmMessages(evts):
+	"""The Manual view's 20 message rows from liveAlarms() rows: standing alarms, else one "Cell healthy" row, padded with blanks."""
 	rows = []
-	try:
-		evts = MachineDemo.plant.liveAlarms()
-	except Throwable:
-		evts = []
 	for a in evts:
 		txt = str(a.get("label") or a.get("name") or "Alarm")
 		if txt.startswith("Palletiser / "):
@@ -305,13 +301,9 @@ def alarmMessages():
 	return rows
 
 
-def alarmTotals():
-	"""Standing alarms counted by priority, plus total, active and unacked."""
+def alarmTotals(rows):
+	"""liveAlarms() rows counted by priority, plus total, active and unacked."""
 	out = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0, "Diagnostic": 0, "total": 0, "active": 0, "unacked": 0}
-	try:
-		rows = MachineDemo.plant.liveAlarms()
-	except Throwable:
-		return out
 	for a in rows:
 		pri = str(a.get("priority") or "Low")
 		if pri not in out:
@@ -325,13 +317,9 @@ def alarmTotals():
 	return out
 
 
-def alarmBanner():
-	"""The Overview alarm bar: text, counts and colours for the most urgent standing alarm."""
+def alarmBanner(rows):
+	"""The Overview alarm bar from liveAlarms() rows: text, counts and colours for the most urgent one."""
 	out = {"text": "No active alarms on this machine", "sub": "0 alarms - 0 unacknowledged", "colour": "var(--md-ink-quiet, #8b98a3)", "bg": "var(--md-panel, #1d232a)", "border": "var(--md-line, #2c343d)", "time": "", "n": 0, "active": 0}
-	try:
-		rows = MachineDemo.plant.liveAlarms()
-	except Throwable:
-		return out
 	if not rows:
 		return out
 	order = {"Diagnostic": 0, "Low": 1, "Medium": 2, "High": 3, "Critical": 4}
@@ -390,6 +378,28 @@ def alarmBanner():
 	out["n"] = len(rows)
 	out["active"] = active
 	return out
+
+
+ALARM_TAGS = ["Line/AlarmTotals", "Line/AlarmMessages", "Line/AlarmBanner"]
+
+_published = {"values": None, "at": 0}
+
+
+def publishAlarms():
+	"""Write the Alarms counts, Manual message rows and Overview banner to their tags from one alarm query."""
+	try:
+		rows = MachineDemo.plant.liveAlarms()
+		vals = [alarmTotals(rows), alarmMessages(rows), alarmBanner(rows)]
+		now = system.date.toMillis(system.date.now())
+		enc = system.util.jsonEncode(vals)
+		# Rewritten every 10 s even when unchanged: a re-run setup resets the tags to their defaults.
+		if enc == _published["values"] and now - _published["at"] < 10000:
+			return
+		if MachineDemo.plant.writePaths(ALARM_TAGS, [system.util.jsonEncode(v) for v in vals]):
+			_published["values"] = enc
+			_published["at"] = now
+	except (Exception, Throwable) as e:
+		MachineDemo.plant.LOG.warn("publishAlarms failed: %s" % e)
 
 
 def simCommand(custom, call, *args):
